@@ -9,12 +9,17 @@ class AuthType(str, Enum):
 
 
 
+from pydantic import BaseModel, Field, model_validator
+from typing import Optional
+
 class ValidateMachineRequest(BaseModel):
     host: str
     port: Optional[int] = 22
     username: str
     auth_type: AuthType
+
     private_key: Optional[str] = None
+
     password: Optional[str] = None
 
     @model_validator(mode="after")
@@ -26,7 +31,7 @@ class ValidateMachineRequest(BaseModel):
             raise ValueError("password is required when auth_type is 'password'")
 
         return self
-
+    
 
 class ValidateMachineResponse(BaseModel):
     machine_validated : Optional[bool] = True

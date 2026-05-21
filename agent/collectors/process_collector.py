@@ -142,6 +142,7 @@ class ProcessCollector:
     def __init__(
         self,
         dispatch:          Callable,
+        machine_info: dict,
         poll_interval:     float = 1.5,
         resource_interval: float = 30.0,
         hash_executables:  bool  = True,
@@ -154,6 +155,7 @@ class ProcessCollector:
         self._known_pids: Dict[int, dict] = {}
         self._threads           = []
         self._exe_hash_cache: Dict[str, str] = {}
+        self._machine_info =  machine_info
 
     def _get_exe_hash(self, exe_path: str) -> Optional[str]:
         if not exe_path or not Path(exe_path).is_file():
@@ -211,7 +213,7 @@ class ProcessCollector:
             mitre_technique = mitre_tech,
             mitre_tactic    = "Execution" if mitre_tech else None,
         )
-        self._dispatch(event.to_dict())
+        self._dispatch(event.to_dict() , self._machine_info)
 
     def _poll_processes(self):
         print("ProcessCollector polling started")
@@ -277,7 +279,7 @@ class ProcessCollector:
                                 mitre_technique = "T1496" if cpu > 90 else None,
                                 mitre_tactic    = "Impact" if cpu > 90 else None,
                             )
-                            self._dispatch(event.to_dict())
+                            self._dispatch(event.to_dict() , self._machine_info)
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
             except Exception as ex:

@@ -20,7 +20,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy source code separately
 COPY src/ ./src
 COPY agent/ ./agent
-COPY install_linux.sh /app/
 
 # Move working dir to src (important for imports like main:app)
 WORKDIR /app/src

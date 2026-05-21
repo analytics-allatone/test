@@ -10,6 +10,7 @@ from collectors.network_collector import NetworkCollector
 from collectors.process_collector import ProcessCollector
 from collectors.usb_collector import USBCollector
 from collectors.harddisk_collector import HardDiskCollector
+from utils import get_machine_info
 
 
 
@@ -17,18 +18,18 @@ from collectors.harddisk_collector import HardDiskCollector
 
 
 class SentinelAgent:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict , agent_name:str):
         self.config     = config
         self._collectors = []
         self._dispatcher = None
         self._running   = False
+        self.machine_info = get_machine_info()
+        self.machine_info["agent_name"] = agent_name
 
     def _build_dispatcher(self):
         cfg = self.config["output"]
 
         return EventDispatcher(
-            kafka_brokers=cfg["kafka"]["brokers"],
-            kafka_topic=cfg["kafka"]["topic"],
             stdout=cfg.get("stdout", False),
         )
 
@@ -40,7 +41,7 @@ class SentinelAgent:
         excl_cats    = set(cfg.get("exclude_categories", []))
         excl_actions = set(cfg.get("exclude_actions", []))
 
-        def dispatch(event_dict: dict):
+        def dispatch(event_dict: dict , machine_info):
             sev = event_dict.get("severity", "info")
             if SEVERITY_ORDER.index(sev) < min_sev_idx:
                 return
@@ -48,7 +49,7 @@ class SentinelAgent:
                 return
             if event_dict.get("action") in excl_actions:
                 return
-            self._dispatcher.push(event_dict)
+            self._dispatcher.push(event_dict , machine_info)
 
         return dispatch
 
@@ -64,6 +65,7 @@ class SentinelAgent:
                 fc_cfg = col_cfg["file"]
                 fc = FileCollector(
                     dispatch    = dispatch,
+                    machine_info= self.machine_info,
                     watch_paths = fc_cfg.get("watch_paths"),
                     ignore_dirs = fc_cfg.get("ignore_dirs"),
                     recursive   = fc_cfg.get("recursive", True),
@@ -83,8 +85,7 @@ class SentinelAgent:
                 
                 ac = create_auth_collector(
                     dispatch       = dispatch,
-                    log_path       = col_cfg["auth"].get("log_path"),
-                    parse_history  = col_cfg["auth"].get("parse_history", False),
+                    machine_info = self.machine_info
                 )
                 ac.start()
                 self._collectors.append(ac)
@@ -98,6 +99,7 @@ class SentinelAgent:
                 
                 nc = NetworkCollector(
                     dispatch        = dispatch,
+                    machine_info= self.machine_info,
                     poll_interval   = col_cfg["network"].get("poll_interval", 2.0),
                     track_bandwidth = col_cfg["network"].get("track_bandwidth", True),
                 )
@@ -113,6 +115,7 @@ class SentinelAgent:
                
                 pc = ProcessCollector(
                     dispatch          = dispatch,
+                    machine_info= self.machine_info,
                     poll_interval     = col_cfg["process"].get("poll_interval", 1.5),
                     resource_interval = col_cfg["process"].get("resource_interval", 30.0),
                     hash_executables  = col_cfg["process"].get("hash_executables", True),
@@ -130,6 +133,7 @@ class SentinelAgent:
             try:
                 uc = USBCollector(
                     dispatch                 = dispatch,
+                    machine_info= self.machine_info,
                     poll_interval            = usb_cfg.get("poll_interval", 3.0),
                     scan_on_connect          = usb_cfg.get("scan_on_connect", True),
                     transfer_threshold_bytes = usb_cfg.get("transfer_threshold_bytes", 524288000),
@@ -146,6 +150,7 @@ class SentinelAgent:
             try:
                 hc = HardDiskCollector(
                     dispatch         = dispatch,
+                    machine_info= self.machine_info,
                     poll_interval    = hd_cfg.get("poll_interval", 30.0),
                     smart_interval   = hd_cfg.get("smart_interval", 300.0),
                     warn_percent     = hd_cfg.get("warn_percent", 85.0),

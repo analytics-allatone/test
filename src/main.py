@@ -7,26 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.v1 import v1_api_router
 from db.db import create_db_and_tables
 
-from bots.kafka_consumer import kafka_consumer_service
+from bots.mqtt_consumer import mqtt_background_consumer
 
 
-consumer_task = None
+worker_task = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    global consumer_task
+    global worker_task
 
     # # DATABASE STARTUP
-    await create_db_and_tables()
+    await create_db_and_tables("master_database")
 
-    # START KAFKA CONSUMER
-    kafka_consumer_service.start()
 
-    consumer_task = asyncio.create_task(
-        kafka_consumer_service.consume_loop()
-    )
+    worker_task = asyncio.create_task(mqtt_background_consumer())
 
     print("Application Started")
 
@@ -34,11 +30,7 @@ async def lifespan(app: FastAPI):
 
     # SHUTDOWN LOGIC
     print("Application Shutting Down...")
-
-    await kafka_consumer_service.shutdown()
-
-    if consumer_task:
-        consumer_task.cancel()
+    worker_task.cancel()
 
 
 app = FastAPI(

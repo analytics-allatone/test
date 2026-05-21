@@ -11,17 +11,6 @@ JSON_LOGS_BASENAME = "logs-of"
 
 
 
-#################################
-#                               #
-#     DATABASE CONFIGURATIONS   #
-#                               #
-#################################
-
-
-DB_USER = "developer"
-DB_PASSWORD = "password"
-DB_ENDPOINT = "172.235.9.36"
-DB_NAME = "developmentdb"
 
 
 

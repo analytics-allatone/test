@@ -20,7 +20,7 @@ from schemas.v1.auth_schema import(
 )
 from auth.crypto import hash_password , verify_password
 
-from models.user_model import Users
+from models.master_model import User
 
 from auth.jwt_auth import create_access_token , create_refresh_token , verify_token
 
@@ -35,12 +35,14 @@ auth_router = APIRouter()
 
 
 @auth_router.post("/login" , response_model = standard_success_response[LoginResponse] , status_code=200)
-async def login(req: LoginRequest , db: AsyncSession = Depends(get_async_db)):
+async def login(req: LoginRequest ):
     email = req.email
     password = req.password
+    user = None
+    async with get_async_db("master_database") as db:
 
-    result = await db.execute(select(Users).where(Users.email == email))
-    user = result.scalars().first()
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalars().first()
         
     
     if not user:
@@ -66,33 +68,34 @@ async def login(req: LoginRequest , db: AsyncSession = Depends(get_async_db)):
 
 
 @auth_router.post("/signup" , response_model = standard_success_response[SignupResponse] , status_code=201)
-async def signup(req: SignupRequest , db: AsyncSession = Depends(get_async_db)):
-
-    result = await db.execute(select(Users).where(Users.email == req.email))
-    existing_user = result.scalars().first()
+async def signup(req: SignupRequest ):
+    token_data = None
+    async with get_async_db("master_database") as db:
+        result = await db.execute(select(User).where(User.email == req.email))
+        existing_user = result.scalars().first()
     
-    if existing_user:
-        raise HTTPException(status_code=401, detail="User already exists with this email, please login")
-    
+        if existing_user:
+            raise HTTPException(status_code=401, detail="User already exists with this email, please login")
+        
 
-    hashed_password = hash_password(req.password)
+        hashed_password = hash_password(req.password)
 
-    new_user = Users(
-        first_name = req.first_name,
-        last_name = req.last_name,
-        email = req.email,
-        country_code = req.country_code,
-        phone_number = req.phone_number,
-        password = hashed_password
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+        new_user = User(
+            first_name = req.first_name,
+            last_name = req.last_name,
+            email = req.email,
+            country_code = req.country_code,
+            phone_number = req.phone_number,
+            password = hashed_password
+        )
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
 
-    token_data = {
-        "id" : new_user.id,
-        "email": new_user.email
-    }
+        token_data = {
+            "id" : new_user.id,
+            "email": new_user.email
+        }
 
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)

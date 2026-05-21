@@ -206,6 +206,7 @@ class HardDiskCollector:
     def __init__(
         self,
         dispatch: Callable[[dict], None],
+        machine_info: dict,
         poll_interval: float = 30.0,
         smart_interval: float = 300.0,     # check SMART every 5 minutes
         warn_percent: float   = DISK_WARN_PERCENT,
@@ -226,6 +227,7 @@ class HardDiskCollector:
         self._known: Dict[str, dict] = {}
         # Track which mounts have already fired a space warning (avoid spam)
         self._warned: Set[str] = set()
+        self._machine_info =  machine_info
 
     # ── event builder ────────────────────────
 
@@ -257,7 +259,7 @@ class HardDiskCollector:
                 f"used={snap.get('percent', '?')}%"
             ),
         )
-        self._dispatch(event.to_dict())
+        self._dispatch(event.to_dict() , self._machine_info)
 
     # ── checks ───────────────────────────────
 

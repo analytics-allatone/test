@@ -286,23 +286,23 @@ Write-Host "[+] Configuring service..."
 
 & $NSSMExe set $ServiceName Start SERVICE_AUTO_START
 
-& $NSSMExe set $ServiceName AppStdout "$InstallDir\logs\stdout.log"
+# & $NSSMExe set $ServiceName AppStdout "$InstallDir\logs\stdout.log"
 
-& $NSSMExe set $ServiceName AppStderr "$InstallDir\logs\stderr.log"
+# & $NSSMExe set $ServiceName AppStderr "$InstallDir\logs\stderr.log"
 
-& $NSSMExe set $ServiceName AppRotateFiles 1
+# & $NSSMExe set $ServiceName AppRotateFiles 1
 
-& $NSSMExe set $ServiceName AppRotateOnline 1
+# & $NSSMExe set $ServiceName AppRotateOnline 1
 
 # -----------------------------
 # CREATE LOG DIR
 # -----------------------------
-$LogDir = "$InstallDir\logs"
+# $LogDir = "$InstallDir\logs"
 
-if (!(Test-Path $LogDir)) {
+# if (!(Test-Path $LogDir)) {
 
-    New-Item -ItemType Directory -Path $LogDir | Out-Null
-}
+#     New-Item -ItemType Directory -Path $LogDir | Out-Null
+# }
 
 # -----------------------------
 # START SERVICE
@@ -319,7 +319,8 @@ Start-Sleep -Seconds 3
 $Service = Get-Service -Name $ServiceName
 if ($Service.Status -ne "Running") {
     Write-Error "Service failed to start."
-    Get-Content "$InstallDir\logs\stderr.log" -Tail 50
+    # Get-Content "$InstallDir\logs\stderr.log" -Tail 50
+    sc.exe query $ServiceName
     exit 1
 }
 

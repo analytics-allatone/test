@@ -405,6 +405,7 @@ class USBCollector:
     def __init__(
         self,
         dispatch: Callable[[dict], None],
+        machine_info: dict,
         poll_interval: float = 3.0,
         scan_on_connect: bool = True,
         transfer_threshold_bytes: int = LARGE_TRANSFER_BYTES,
@@ -420,6 +421,8 @@ class USBCollector:
         self._known: Dict[str, dict] = {}
         # Linux raw USB: syspath → entry dict
         self._known_raw: Dict[str, dict] = {}
+
+        self._machine_info = machine_info
 
     # ── emit ─────────────────────────────────
 
@@ -466,7 +469,7 @@ class USBCollector:
             tags      = (tags or []) + ["usb", "removable_media"],
             notes     = notes or auto_notes,
         )
-        self._dispatch(event.to_dict())
+        self._dispatch(event.to_dict() , self._machine_info)
 
     # ── threat checks ────────────────────────
 

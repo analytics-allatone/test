@@ -99,7 +99,7 @@ def _parse_timestamp(ts_str: str) -> str:
         return datetime.now(timezone.utc).isoformat()
 
 
-def parse_auth_line(line: str, dispatch: Callable):
+def parse_auth_line(line: str, dispatch: Callable , machine_info):
     """Parse a single auth log line and emit a SentinelEvent if matched."""
     print(f"[RAW AUTH LOG] {line.rstrip()}")
     line = line.strip()
@@ -258,7 +258,7 @@ def parse_auth_line(line: str, dispatch: Callable):
         )
 
     if event:
-        dispatch(event.to_dict())
+        dispatch(event.to_dict() , machine_info)
 
 
 
@@ -273,13 +273,14 @@ class LinuxAuthCollector:
         "/var/log/messages",    # Some distros
     ]
 
-    def __init__(self, dispatch: Callable, log_path: str = None,
+    def __init__(self, dispatch: Callable,  machine_info: dict,log_path: str = None,
                  parse_history: bool = False):
         self._dispatch = dispatch
         self._log_path = log_path or self._find_log()
         self._parse_history = parse_history
         self._stop = threading.Event()
         self._thread = None
+        self._machine_info =  machine_info
 
     def _find_log(self) -> str:
         for p in self.AUTH_LOG_CANDIDATES:
@@ -297,7 +298,7 @@ class LinuxAuthCollector:
                 while not self._stop.is_set():
                     line = f.readline()
                     if line:
-                        parse_auth_line(line, self._dispatch)
+                        parse_auth_line(line, self._dispatch , self._machine_info)
                     else:
                         time.sleep(0.05)
                         # Handle log rotation
@@ -354,12 +355,13 @@ class WindowsAuthCollector:
         4738: (EventAction.PASSWD_CHG, EventOutcome.SUCCESS, Severity.MEDIUM, "account_changed"),
     }
 
-    def __init__(self, dispatch: Callable, poll_interval: int = 5):
+    def __init__(self, dispatch: Callable, machine_info: dict, poll_interval: int = 5):
         self._dispatch      = dispatch
         self._poll_interval = poll_interval
         self._stop          = threading.Event()
         self._last_record   = 0
         self._thread        = None
+        self._machine_info =  machine_info
 
     def _read_events(self):
         try:
@@ -420,7 +422,7 @@ class WindowsAuthCollector:
                 event.mitre_tactic    = "Credential Access"
                 event.mitre_technique = "T1110"
 
-            self._dispatch(event.to_dict())
+            self._dispatch(event.to_dict(), self._machine_info)
         except Exception as ex:
             print(f"Event parse error: {ex}")
 
@@ -433,7 +435,7 @@ class WindowsAuthCollector:
 
 
 
-def create_auth_collector(dispatch: Callable, **kwargs):
+def create_auth_collector(dispatch: Callable, machine_info):
     if platform.system() == "Windows":
-        return WindowsAuthCollector(dispatch, **kwargs)
-    return LinuxAuthCollector(dispatch, **kwargs)
+        return WindowsAuthCollector(dispatch,machine_info)
+    return LinuxAuthCollector(dispatch,machine_info)

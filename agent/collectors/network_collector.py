@@ -96,6 +96,7 @@ class NetworkCollector:
     def __init__(
         self,
         dispatch:        Callable,
+        machine_info: dict,
         poll_interval:   float = 2.0,
         track_bandwidth: bool  = True,
     ):
@@ -106,6 +107,7 @@ class NetworkCollector:
         self._thread          = None
         self._seen_conns: Dict[Tuple, dict] = {}   # key → connection snapshot
         self._prev_net_io     = None
+        self._machine_info = machine_info
 
     @staticmethod
     def _conn_key(c) -> Tuple:
@@ -126,7 +128,6 @@ class NetworkCollector:
         }
 
     def _emit_connection(self, snap: dict, action: str):
-        print(f"SNAP:-> {snap}")
         laddr  = snap["laddr"]
         raddr  = snap["raddr"]
         dst_ip = raddr[0]
@@ -179,32 +180,66 @@ class NetworkCollector:
             mitre_tactic    = "Command and Control" if mitre_tech else None,
             mitre_technique = mitre_tech,
         )
-        self._dispatch(event.to_dict())
+        self._dispatch(event.to_dict() , self._machine_info)
+
+    # def _poll(self):
+    #     while not self._stop.is_set():
+    #         try:
+    #             current = {}
+    #             conns = psutil.net_connections(kind="all")
+    #             for c in conns:
+    #                 key = self._conn_key(c)
+    #                 current[key] = self._snapshot_conn(c)
+
+    #             # New connections
+    #             for key, snap in current.items():
+    #                 if key not in self._seen_conns:
+    #                     if snap["raddr"][0]:  # only emit if remote addr exists
+    #                         self._emit_connection(snap, EventAction.CONNECT)
+
+    #             # Closed connections
+    #             for key, snap in self._seen_conns.items():
+    #                 if key not in current:
+    #                     if snap["raddr"][0]:
+    #                         self._emit_connection(snap, EventAction.CLOSE)
+
+    #             self._seen_conns = current
+
+    #             # Bandwidth stats
+    #             if self._track_bw:
+    #                 self._emit_bandwidth_stats()
+
+    #         except Exception as ex:
+    #             print(f"Network poll error: {ex}")
+
+    #         time.sleep(self._interval)
+
 
     def _poll(self):
         while not self._stop.is_set():
             try:
                 current = {}
                 conns = psutil.net_connections(kind="all")
+
                 for c in conns:
                     key = self._conn_key(c)
                     current[key] = self._snapshot_conn(c)
 
                 # New connections
                 for key, snap in current.items():
-                    if key not in self._seen_conns:
-                        if snap["raddr"][0]:  # only emit if remote addr exists
-                            self._emit_connection(snap, EventAction.CONNECT)
+                    raddr = snap.get("raddr")
+                    if raddr:
+                        self._emit_connection(snap, EventAction.CONNECT)
 
                 # Closed connections
-                for key, snap in self._seen_conns.items():
+                for key, snap in list(self._seen_conns.items()):
                     if key not in current:
-                        if snap["raddr"][0]:
+                        raddr = snap.get("raddr")
+                        if raddr:
                             self._emit_connection(snap, EventAction.CLOSE)
 
                 self._seen_conns = current
 
-                # Bandwidth stats
                 if self._track_bw:
                     self._emit_bandwidth_stats()
 
@@ -239,7 +274,7 @@ class NetworkCollector:
                             tags      = ["bandwidth", nic],
                             notes     = f"NIC={nic} sent={delta_sent} recv={delta_recv}",
                         )
-                        self._dispatch(event.to_dict())
+                        self._dispatch(event.to_dict() , self._machine_info)
             self._prev_net_io = io
         except Exception:
             pass
@@ -266,8 +301,9 @@ class LinuxDNSCollector:
         (re.compile(r"systemd-resolved.*Received query.*QNAME: (\S+)"), "resolved"),
     ]
 
-    def __init__(self, dispatch: Callable):
+    def __init__(self, dispatch: Callable ,  machine_info: dict):
         self._dispatch = dispatch
+        self._machine_info =  machine_info
 
     def emit_dns_query(self, query: str, src_ip: str, response: list = None):
         event = SentinelEvent(
@@ -286,4 +322,4 @@ class LinuxDNSCollector:
             ),
             tags = ["dns", "network"],
         )
-        self._dispatch(event.to_dict())
+        self._dispatch(event.to_dict() , self._machine_info)
