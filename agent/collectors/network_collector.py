@@ -7,15 +7,8 @@ from typing import Callable, Dict, Tuple, Optional
 
 import psutil
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from schema.event_schema import (
-    SentinelEvent, NetworkInfo, ProcessInfo, UserInfo,
-    EventCategory, EventAction, EventOutcome, Severity,
-    get_host_info
-)
-
+# Importing the brand new flattened schema
+from schema.network_schema import NetworkEvent, EventCategory, EventOutcome, Severity
 
 # ─────────────────────────────────────────────
 #  HELPERS
@@ -56,7 +49,7 @@ def protocol_for_port(port: int) -> str:
     return WELL_KNOWN_PORTS.get(port, "unknown")
 
 
-def severity_for_connection(dst_ip: str, dst_port: int, status: str) -> str:
+def severity_for_connection(dst_ip: str, dst_port: int) -> str:
     if dst_port in SUSPICIOUS_PORTS:
         return Severity.CRITICAL
     if not is_private_ip(dst_ip) and dst_port in {22, 3389, 445, 5900}:
@@ -68,29 +61,11 @@ def severity_for_connection(dst_ip: str, dst_port: int, status: str) -> str:
     return Severity.INFO
 
 
-def _get_process_for_conn(pid: Optional[int]) -> Optional[ProcessInfo]:
-    if not pid:
-        return None
-    try:
-        p = psutil.Process(pid)
-        with p.oneshot():
-            return ProcessInfo(
-                pid          = pid,
-                ppid         = p.ppid(),
-                name         = p.name(),
-                executable   = p.exe(),
-                command_line = " ".join(p.cmdline()),
-                user         = p.username(),
-            )
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        return ProcessInfo(pid=pid)
-
-
-
 class NetworkCollector:
     """
     Polls psutil.net_connections() to detect connection lifecycle events.
-    Also tracks per-NIC byte/packet counters for bandwidth anomaly detection.
+    Tracks per-NIC byte/packet counters for bandwidth anomaly detection.
+    Maps everything to a strictly flattened NetworkEvent.
     """
 
     def __init__(
@@ -136,84 +111,58 @@ class NetworkCollector:
         transport = "tcp" if snap["type"] == socket.SOCK_STREAM else "udp"
         protocol  = protocol_for_port(dst_port)
         direction = "outbound" if laddr[1] > 1024 else "inbound"
-        severity  = severity_for_connection(dst_ip, dst_port, snap.get("status",""))
+        severity  = severity_for_connection(dst_ip, dst_port)
 
-        # Determine if it's inbound based on ports
         if dst_port == 0 and laddr[1] < 1024:
             direction = "inbound"
-
-        net_info = NetworkInfo(
-            direction        = direction,
-            transport        = transport,
-            protocol         = protocol,
-            src_ip           = laddr[0],
-            src_port         = laddr[1],
-            dst_ip           = dst_ip,
-            dst_port         = dst_port,
-            connection_status= snap.get("status"),
-            is_private_ip    = is_private_ip(dst_ip) if dst_ip else None,
-        )
-
-        proc_info = _get_process_for_conn(snap.get("pid"))
 
         tags = ["network"]
         if dst_port in SUSPICIOUS_PORTS:
             tags.append("suspicious_port")
-        if not is_private_ip(dst_ip) and dst_ip:
+        if dst_ip and not is_private_ip(dst_ip):
             tags.append("external")
 
         mitre_tech = None
+        mitre_tact = None
         if dst_port in {4444, 31337, 1337}:
             mitre_tech = "T1571"  # Non-Standard Port
+            mitre_tact = "Command and Control"
 
-        event = SentinelEvent(
-            category        = EventCategory.NETWORK,
-            action          = action,
-            outcome         = EventOutcome.SUCCESS,
-            severity        = severity,
-            collector       = "network_monitor",
-            host            = get_host_info(),
-            network         = net_info,
-            process         = proc_info,
-            tags            = tags,
-            raw_log         = snap,
-            mitre_tactic    = "Command and Control" if mitre_tech else None,
-            mitre_technique = mitre_tech,
+        # Instantiate flat schema instance directly
+        event = NetworkEvent(
+            action                    = action,
+            outcome                   = EventOutcome.SUCCESS,
+            severity                  = severity,
+            tags                      = tags,
+            mitre_tactic              = mitre_tact,
+            mitre_technique           = mitre_tech,
+            # Flattened Network properties
+            network_direction         = direction,
+            network_transport         = transport,
+            network_protocol          = protocol,
+            network_src_ip            = laddr[0],
+            network_src_port          = laddr[1],
+            network_dst_ip            = dst_ip,
+            network_dst_port          = dst_port,
+            network_connection_status = snap.get("status"),
+            network_is_private_ip     = is_private_ip(dst_ip) if dst_ip else None,
         )
-        self._dispatch(event.to_dict() , self._machine_info)
 
-    # def _poll(self):
-    #     while not self._stop.is_set():
-    #         try:
-    #             current = {}
-    #             conns = psutil.net_connections(kind="all")
-    #             for c in conns:
-    #                 key = self._conn_key(c)
-    #                 current[key] = self._snapshot_conn(c)
-
-    #             # New connections
-    #             for key, snap in current.items():
-    #                 if key not in self._seen_conns:
-    #                     if snap["raddr"][0]:  # only emit if remote addr exists
-    #                         self._emit_connection(snap, EventAction.CONNECT)
-
-    #             # Closed connections
-    #             for key, snap in self._seen_conns.items():
-    #                 if key not in current:
-    #                     if snap["raddr"][0]:
-    #                         self._emit_connection(snap, EventAction.CLOSE)
-
-    #             self._seen_conns = current
-
-    #             # Bandwidth stats
-    #             if self._track_bw:
-    #                 self._emit_bandwidth_stats()
-
-    #         except Exception as ex:
-    #             print(f"Network poll error: {ex}")
-
-    #         time.sleep(self._interval)
-
+        # Enrich with Flattened Process Context natively if PID exists
+        pid = snap.get("pid")
+        if pid:
+            event.process_pid = pid
+            try:
+                p = psutil.Process(pid)
+                with p.oneshot():
+                    event.process_ppid         = p.ppid()
+                    event.process_name         = p.name()
+                    event.process_executable   = p.exe()
+                    event.process_command_line = " ".join(p.cmdline())
+                    event.process_user         = p.username()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        self._dispatch(event.to_dict(), self._machine_info)
 
     def _poll(self):
         while not self._stop.is_set():
@@ -227,16 +176,17 @@ class NetworkCollector:
 
                 # New connections
                 for key, snap in current.items():
-                    raddr = snap.get("raddr")
-                    if raddr:
-                        self._emit_connection(snap, EventAction.CONNECT)
+                    if key not in self._seen_conns:
+                        raddr = snap.get("raddr")
+                        if raddr and raddr[0]:  # remote address must exist
+                            self._emit_connection(snap, "connect")
 
                 # Closed connections
                 for key, snap in list(self._seen_conns.items()):
                     if key not in current:
                         raddr = snap.get("raddr")
-                        if raddr:
-                            self._emit_connection(snap, EventAction.CLOSE)
+                        if raddr and raddr[0]:
+                            self._emit_connection(snap, "close")
 
                 self._seen_conns = current
 
@@ -249,7 +199,7 @@ class NetworkCollector:
             time.sleep(self._interval)
 
     def _emit_bandwidth_stats(self):
-        """Emit per-NIC I/O counters as a system event."""
+        """Emit per-NIC I/O counters completely flattened out."""
         try:
             io = psutil.net_io_counters(pernic=True)
             if self._prev_net_io:
@@ -259,22 +209,18 @@ class NetworkCollector:
                         continue
                     delta_sent = counters.bytes_sent - prev.bytes_sent
                     delta_recv = counters.bytes_recv - prev.bytes_recv
-                    if delta_sent > 1_000_000 or delta_recv > 1_000_000:  # > 1MB in interval
-                        event = SentinelEvent(
-                            category  = EventCategory.NETWORK,
-                            action    = "bandwidth_spike",
-                            outcome   = EventOutcome.UNKNOWN,
-                            severity  = Severity.MEDIUM,
-                            collector = "network_monitor",
-                            host      = get_host_info(),
-                            network   = NetworkInfo(
-                                bytes_sent = delta_sent,
-                                bytes_recv = delta_recv,
-                            ),
-                            tags      = ["bandwidth", nic],
-                            notes     = f"NIC={nic} sent={delta_sent} recv={delta_recv}",
+                    
+                    if delta_sent > 1_000_000 or delta_recv > 1_000_000:  # > 1MB spike
+                        event = NetworkEvent(
+                            action             = "bandwidth_spike",
+                            outcome            = EventOutcome.UNKNOWN,
+                            severity           = Severity.MEDIUM,
+                            network_bytes_sent = delta_sent,
+                            network_bytes_recv = delta_recv,
+                            tags               = ["bandwidth", nic],
+                            notes              = f"NIC={nic} sent={delta_sent} recv={delta_recv}",
                         )
-                        self._dispatch(event.to_dict() , self._machine_info)
+                        self._dispatch(event.to_dict(), self._machine_info)
             self._prev_net_io = io
         except Exception:
             pass
@@ -287,39 +233,24 @@ class NetworkCollector:
         self._stop.set()
 
 
-
 class LinuxDNSCollector:
     """
-    Tails /var/log/syslog or /var/log/messages for DNS queries (dnsmasq/systemd-resolved).
-    Also monitors /etc/resolv.conf and /etc/hosts for changes (integrity).
+    Tails system paths tracking DNS logs mapping straight to a flat footprint layout.
     """
-
-    DNS_PATTERNS = [
-        # dnsmasq
-        (re.compile(r"dnsmasq\[\d+\]: query\[(\S+)\] (\S+) from ([\d.]+)"), "dnsmasq"),
-        # systemd-resolved (journal)
-        (re.compile(r"systemd-resolved.*Received query.*QNAME: (\S+)"), "resolved"),
-    ]
-
-    def __init__(self, dispatch: Callable ,  machine_info: dict):
+    def __init__(self, dispatch: Callable, machine_info: dict):
         self._dispatch = dispatch
-        self._machine_info =  machine_info
+        self._machine_info = machine_info
 
     def emit_dns_query(self, query: str, src_ip: str, response: list = None):
-        event = SentinelEvent(
-            category  = EventCategory.NETWORK,
-            action    = EventAction.DNS_QUERY,
-            outcome   = EventOutcome.SUCCESS,
-            severity  = Severity.INFO,
-            collector = "dns_monitor",
-            host      = get_host_info(),
-            network   = NetworkInfo(
-                protocol    = "dns",
-                src_ip      = src_ip,
-                dst_port    = 53,
-                dns_query   = query,
-                dns_response= response,
-            ),
-            tags = ["dns", "network"],
+        event = NetworkEvent(
+            action               = "dns_query",
+            outcome              = EventOutcome.SUCCESS,
+            severity             = Severity.INFO,
+            network_protocol     = "dns",
+            network_src_ip       = src_ip,
+            network_dst_port     = 53,
+            network_dns_query    = query,
+            network_dns_response = response,
+            tags                 = ["dns", "network"],
         )
-        self._dispatch(event.to_dict() , self._machine_info)
+        self._dispatch(event.to_dict(), self._machine_info)

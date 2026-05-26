@@ -7,7 +7,8 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 
 class EventCategory(str, Enum):
-    PROCESS = "process"
+    USB = "usb"
+
 
 class EventOutcome(str, Enum):
     SUCCESS = "success"
@@ -22,29 +23,34 @@ class Severity(str, Enum):
     CRITICAL = "critical"
 
 @dataclass
-class ProcessEvent:
+class USBEvent:
     # --- Core Metadata ---
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
-    category: str = EventCategory.PROCESS
-    action: str = ""
+    category: str = EventCategory.USB
+    action: str = ""  # usb_connected, usb_disconnected, usb_raw_device, usb_autorun_found, usb_data_transfer
     outcome: str = EventOutcome.UNKNOWN
     severity: str = Severity.INFO
-    collector: str = "process_monitor"
+    collector: str = "usb_monitor"
     tags: List[str] = field(default_factory=list)
     notes: Optional[str] = None
 
-    # --- Flattened Process Context (No nesting) ---
-    process_pid: Optional[int] = None
-    process_ppid: Optional[int] = None
-    process_name: Optional[str] = None
-    process_executable: Optional[str] = None
-    process_command_line: Optional[str] = None
-    process_working_dir: Optional[str] = None
-    process_start_time: Optional[str] = None
-    process_user: Optional[str] = None
-    process_cpu_percent: Optional[float] = None
-    process_memory_rss_mb: Optional[float] = None
-    process_sha256: Optional[str] = None
+    # --- Flattened USB Device Context ---
+    usb_device_path: Optional[str] = None
+    usb_mountpoint: Optional[str] = None
+    usb_fstype: Optional[str] = None
+    usb_mount_options: Optional[str] = None
+    usb_label: Optional[str] = None
+    usb_vendor: Optional[str] = None
+    usb_model: Optional[str] = None
+    usb_serial_number: Optional[str] = None
+    usb_size_bytes: Optional[int] = None
+    usb_used_bytes: Optional[int] = None
+    usb_transfer_delta_bytes: Optional[int] = None
+
+    # --- Accompanying File/Target Context (e.g., for Autorun Alerts) ---
+    file_path: Optional[str] = None
+    file_name: Optional[str] = None
+    file_directory: Optional[str] = None
 
     # --- Threat Intelligence Context ---
     risk_score: Optional[float] = None

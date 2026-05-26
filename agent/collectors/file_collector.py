@@ -1,10 +1,3 @@
-"""
-Sentinel Agent - File System Collector
-Monitors file CRUD operations using watchdog (cross-platform).
-Captures: create, modify, delete, rename, chmod, chown
-Hashes: SHA256, SHA1, MD5 for every file touched.
-"""
-
 import os
 import stat
 import time
@@ -28,77 +21,74 @@ except ImportError:
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from schema.event_schema import (
-    SentinelEvent, FileInfo, UserInfo, ProcessInfo,
-    EventCategory, EventAction, EventOutcome, Severity,
-    hash_file, get_host_info
-)
+
+# Import the new flat file schema components
+from schema.file_schema import FileEvent, EventCategory, EventOutcome, Severity, EventAction
+from schema.event_schema import hash_file  # Retaining metadata extraction dependency
 
 # ─────────────────────────────────────────────
 #  HELPERS
 # ─────────────────────────────────────────────
 
-def _get_file_info(path: str, old_path: str = None, old_sha256: str = None) -> FileInfo:
+def _populate_file_fields(event_obj: FileEvent, path: str, old_path: str = None, old_sha256: str = None):
+    """Enriches the FileEvent instance with file-level attributes directly."""
     p = Path(path)
-    info = FileInfo(
-        path      = str(p.resolve()),
-        name      = p.name,
-        extension = p.suffix.lower(),
-        directory = str(p.parent),
-        old_path  = old_path,
-        old_sha256= old_sha256,
-    )
+    event_obj.file_path = str(p.resolve())
+    event_obj.file_name = p.name
+    event_obj.file_extension = p.suffix.lower()
+    event_obj.file_directory = str(p.parent)
+    event_obj.file_old_path = old_path
+    event_obj.file_old_sha256 = old_sha256
+
     try:
         st = p.stat()
-        info.size_bytes  = st.st_size
-        info.inode       = st.st_ino if platform.system() != "Windows" else None
-        info.modified_at = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
-        info.created_at  = datetime.fromtimestamp(st.st_ctime, tz=timezone.utc).isoformat()
+        event_obj.file_size_bytes = st.st_size
+        event_obj.file_inode = st.st_ino if platform.system() != "Windows" else None
+        event_obj.file_modified_at = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+        event_obj.file_created_at = datetime.fromtimestamp(st.st_ctime, tz=timezone.utc).isoformat()
+        
         # Permissions
         mode = stat.filemode(st.st_mode)
-        info.permissions = mode
+        event_obj.file_permissions = mode
         if platform.system() != "Windows":
             import pwd, grp
             try:
-                info.owner = pwd.getpwuid(st.st_uid).pw_name
-                info.group = grp.getgrgid(st.st_gid).gr_name
+                event_obj.file_owner = pwd.getpwuid(st.st_uid).pw_name
+                event_obj.file_group = grp.getgrgid(st.st_gid).gr_name
             except Exception:
-                info.owner = str(st.st_uid)
-                info.group = str(st.st_gid)
+                event_obj.file_owner = str(st.st_uid)
+                event_obj.file_group = str(st.st_gid)
     except (FileNotFoundError, PermissionError, OSError):
         pass
 
     if p.is_file():
         hashes = hash_file(str(p))
-        info.sha256 = hashes["sha256"]
-        info.sha1   = hashes["sha1"]
-        info.md5    = hashes["md5"]
-
-    return info
+        event_obj.file_sha256 = hashes["sha256"]
+        event_obj.file_sha1 = hashes["sha1"]
+        event_obj.file_md5 = hashes["md5"]
 
 
-def _get_current_user() -> UserInfo:
-    user = UserInfo()
+def _populate_user_fields(event_obj: FileEvent):
+    """Enriches the FileEvent instance with user metrics directly."""
     try:
         if platform.system() != "Windows":
             import pwd
             pw = pwd.getpwuid(os.getuid())
-            user.name          = pw.pw_name
-            user.uid           = os.getuid()
-            user.gid           = os.getgid()
-            user.effective_uid = os.geteuid()
-            user.effective_gid = os.getegid()
-            user.home_dir      = pw.pw_dir
-            user.shell         = pw.pw_shell
+            event_obj.user_name = pw.pw_name
+            event_obj.user_uid = os.getuid()
+            event_obj.user_gid = os.getgid()
+            event_obj.user_effective_uid = os.geteuid()
+            event_obj.user_effective_gid = os.getegid()
+            event_obj.user_home_dir = pw.pw_dir
+            event_obj.user_shell = pw.pw_shell
         else:
             import getpass
-            user.name = getpass.getuser()
+            event_obj.user_name = getpass.getuser()
     except Exception:
         pass
-    return user
 
 
-def _severity_for_path(path: str) -> str:
+def _severity_for_path(path: str) -> Severity:
     """Assign severity based on path sensitivity."""
     path_lower = path.lower()
     critical_patterns = [
@@ -126,7 +116,7 @@ def _severity_for_path(path: str) -> str:
 # ─────────────────────────────────────────────
 
 class SentinelFileHandler(FileSystemEventHandler):
-    def __init__(self, dispatch: Callable,machine_info ,  ignore_dirs: List[str] = None):
+    def __init__(self, dispatch: Callable, machine_info, ignore_dirs: List[str] = None):
         super().__init__()
         self._dispatch    = dispatch
         self.machine_info = machine_info
@@ -140,38 +130,37 @@ class SentinelFileHandler(FileSystemEventHandler):
         except Exception:
             return False
 
-    def _emit(self, action: str, src_path: str, dst_path: str = None):
+    def _emit(self, action: EventAction, src_path: str, dst_path: str = None):
         if self._is_ignored(src_path):
             return
 
         old_sha = self._hash_cache.get(src_path)
 
-        file_info = _get_file_info(
-            src_path,
-            old_path  = dst_path if action == EventAction.RENAME else None,
-            old_sha256= old_sha  if action == EventAction.UPDATE else None,
+        # Base structural initialization
+        event = FileEvent(
+            action=action,
+            outcome=EventOutcome.SUCCESS,
+            severity=_severity_for_path(src_path),
+            tags=["filesystem"],
         )
+
+        # Direct attribution populations without sub-object allocations
+        _populate_file_fields(
+            event, 
+            src_path, 
+            old_path=dst_path if action == EventAction.RENAME else None,
+            old_sha256=old_sha if action == EventAction.UPDATE else None
+        )
+        _populate_user_fields(event)
 
         # Cache new hash
-        if file_info.sha256:
-            self._hash_cache[src_path] = file_info.sha256
+        if event.file_sha256:
+            self._hash_cache[src_path] = event.file_sha256
 
         # Skip modify events where hash didn't change (metadata-only touch)
-        if action == EventAction.UPDATE and old_sha and old_sha == file_info.sha256:
+        if action == EventAction.UPDATE and old_sha and old_sha == event.file_sha256:
             return
-
-        event = SentinelEvent(
-            category   = EventCategory.FILE,
-            action     = action,
-            outcome    = EventOutcome.SUCCESS,
-            severity   = _severity_for_path(src_path),
-            collector  = "file_watcher",
-            host       = get_host_info(),
-            file       = file_info,
-            user       = _get_current_user(),
-            tags       = ["filesystem"],
-        )
-        self._dispatch(event.to_dict() , self.machine_info)
+        self._dispatch(event.to_dict(), self.machine_info)
 
     def on_created(self, event):
         if not event.is_directory:
@@ -198,8 +187,7 @@ class SentinelFileHandler(FileSystemEventHandler):
 class FileCollector:
     """
     Watches one or more directories for file system changes.
-    Uses watchdog's native inotify (Linux) / FSEvents (macOS) / ReadDirectoryChanges (Windows).
-    Falls back to polling if native backend unavailable.
+    Uses watchdog's native engine, passing telemetry up through structural flat models.
     """
 
     def __init__(
@@ -237,7 +225,7 @@ class FileCollector:
         return ["/proc", "/sys", "/dev", "/run"]
 
     def start(self):
-        handler  = SentinelFileHandler(self._dispatch,self._machine_info, self._ignore_dirs)
+        handler  = SentinelFileHandler(self._dispatch, self._machine_info, self._ignore_dirs)
         ObsClass = PollingObserver if self._use_polling else Observer
         self._observer = ObsClass()
         for path in self._watch_paths:

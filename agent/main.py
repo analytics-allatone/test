@@ -8,7 +8,7 @@ def main():
 
     config = DEFAULT_CONFIG.copy()
 
-    agent = SentinelAgent(config , "Test agent name")
+    agent = SentinelAgent(config , "TestAgent")
 
     def _sig_handler(sig, frame):
         agent.stop()

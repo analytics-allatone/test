@@ -7,7 +7,7 @@ from mqtt_producer import MQTTProducer
 SERVER_IP = "80.225.239.163" 
 MQTT_USER = "my_mqtt_user"
 MQTT_PASS = "mqttpassword"
-TOPIC = "agent/events"
+TOPIC = "agent/events_test"
 
 class EventDispatcher:
     def __init__(self, stdout: bool = False):

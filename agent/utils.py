@@ -40,9 +40,9 @@ def get_machine_info() -> dict:
     info = {
         "mac_address": get_mac_address(),
         "host_name": hostname,
-        "main_ipv4": main_ipv4,
+        "main_ip": main_ipv4,
         "all_ips": [ip[4][0] for ip in socket.getaddrinfo(hostname, None) if ip[4][0]],
-        "system": platform.system(),
+        "os": platform.system().lower(),
         "release": platform.release(),
         "version": platform.version(),
         "machine_architecture": platform.machine()

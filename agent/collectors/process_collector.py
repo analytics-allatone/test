@@ -1,28 +1,15 @@
-"""
-Sentinel Agent - Process Collector
-Monitors process lifecycle: new processes, exited processes, resource spikes.
-Captures full command line, parent, user, executable hash (SHA256).
-Detects: suspicious names, LOLBins, high CPU, hidden processes.
-"""
-
 import time
 import platform
 import threading
 from datetime import datetime, timezone
 from typing import Callable, Dict, Optional
+from pathlib import Path
 
 import psutil
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from schema.event_schema import (
-    SentinelEvent, ProcessInfo, UserInfo,
-    EventCategory, EventAction, EventOutcome, Severity,
-    hash_file, get_host_info
-)
-
-
+# Importing custom flat schema variables
+from schema.process_schema import ProcessEvent, EventCategory, EventOutcome, Severity
+from schema.event_schema import hash_file  # Retaining file hashing utility function
 
 # Living-off-the-Land Binaries (LOLBins)
 LOLBINS_LINUX = {
@@ -60,8 +47,6 @@ SUSPICIOUS_ARGS = [
 
 HIGH_CPU_THRESHOLD    = 80.0   # %
 HIGH_MEMORY_MB        = 1024   # MB
-
-
 
 
 def _assess_process(name: str, exe: str, cmdline: str) -> tuple:
@@ -112,7 +97,7 @@ def _snapshot_process(p: psutil.Process) -> Optional[dict]:
             try:
                 create_ts = datetime.fromtimestamp(
                     p.create_time(), tz=timezone.utc
-                ).isoformat()
+                ).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             except Exception:
                 create_ts = ""
 
@@ -131,12 +116,10 @@ def _snapshot_process(p: psutil.Process) -> Optional[dict]:
         return None
 
 
-
 class ProcessCollector:
     """
     Polls psutil.process_iter() to detect new and exited processes.
-    Hashes executable on new process detection.
-    Monitors CPU/memory spikes periodically.
+    Enriches telemetry directly into flat schema payloads without using sub-objects.
     """
 
     def __init__(
@@ -174,23 +157,10 @@ class ProcessCollector:
         )
 
         exe_hash = None
-        if self._hash_exe and action == EventAction.START:
+        if self._hash_exe and action == "start":
             exe_hash = self._get_exe_hash(snap["exe"])
 
-        proc_info = ProcessInfo(
-            pid          = snap["pid"],
-            ppid         = snap["ppid"],
-            name         = snap["name"],
-            executable   = snap["exe"],
-            command_line = snap["cmdline"],
-            working_dir  = snap.get("cwd"),
-            start_time   = snap.get("created_at"),
-            user         = snap.get("username"),
-            sha256       = exe_hash,
-        )
-
-        # Try to get parent name for context
-        parent_name = None
+        # Try to get parent name for tag context enrichment
         try:
             pp = psutil.Process(snap["ppid"])
             parent_name = pp.name()
@@ -199,21 +169,26 @@ class ProcessCollector:
         except Exception:
             pass
 
-        event = SentinelEvent(
-            category        = EventCategory.PROCESS,
-            action          = action,
-            outcome         = EventOutcome.SUCCESS,
-            severity        = severity,
-            collector       = "process_monitor",
-            host            = get_host_info(),
-            process         = proc_info,
-            user            = UserInfo(name=snap.get("username")),
-            tags            = tags,
-            raw_log         = snap,
-            mitre_technique = mitre_tech,
-            mitre_tactic    = "Execution" if mitre_tech else None,
+        # Populate flat event properties natively
+        event = ProcessEvent(
+            action                = action,
+            outcome               = EventOutcome.SUCCESS,
+            severity              = severity,
+            tags                  = tags,
+            mitre_technique       = mitre_tech,
+            mitre_tactic          = "Execution" if mitre_tech else None,
+            # Assign flattened processing values directly
+            process_pid           = snap["pid"],
+            process_ppid          = snap["ppid"],
+            process_name          = snap["name"],
+            process_executable    = snap["exe"],
+            process_command_line  = snap["cmdline"],
+            process_working_dir   = snap.get("cwd"),
+            process_start_time    = snap.get("created_at"),
+            process_user          = snap.get("username"),
+            process_sha256        = exe_hash,
         )
-        self._dispatch(event.to_dict() , self._machine_info)
+        self._dispatch(event.to_dict(), self._machine_info)
 
     def _poll_processes(self):
         print("ProcessCollector polling started")
@@ -228,12 +203,12 @@ class ProcessCollector:
                 # New processes
                 for pid, snap in current_pids.items():
                     if pid not in self._known_pids:
-                        self._emit_process_event(snap, EventAction.START)
+                        self._emit_process_event(snap, "start")
 
                 # Exited processes
                 for pid, snap in self._known_pids.items():
                     if pid not in current_pids:
-                        self._emit_process_event(snap, EventAction.STOP)
+                        self._emit_process_event(snap, "stop")
 
                 self._known_pids = current_pids
 
@@ -242,10 +217,10 @@ class ProcessCollector:
             time.sleep(self._interval)
 
     def _poll_resources(self):
-        """Separately monitor resource usage spikes."""
+        """Separately monitor resource usage spikes using flat events."""
         while not self._stop.is_set():
             try:
-                for p in psutil.process_iter(attrs=["pid","name","username"]):
+                for p in psutil.process_iter(attrs=["pid", "name", "username"]):
                     try:
                         cpu = p.cpu_percent(interval=0)
                         mem = p.memory_info().rss / (1024 * 1024)
@@ -259,27 +234,23 @@ class ProcessCollector:
                                 severity = Severity.HIGH
                                 tags.append("potential_cryptominer")
 
-                            event = SentinelEvent(
-                                category  = EventCategory.PROCESS,
-                                action    = "resource_spike",
-                                outcome   = EventOutcome.UNKNOWN,
-                                severity  = severity,
-                                collector = "process_monitor",
-                                host      = get_host_info(),
-                                process   = ProcessInfo(
-                                    pid        = snap["pid"],
-                                    name       = snap["name"],
-                                    executable = snap["exe"],
-                                    user       = snap.get("username"),
-                                    cpu_percent   = cpu,
-                                    memory_rss_mb = mem,
-                                ),
-                                tags  = tags,
-                                notes = f"CPU={cpu:.1f}% MEM={mem:.1f}MB",
-                                mitre_technique = "T1496" if cpu > 90 else None,
-                                mitre_tactic    = "Impact" if cpu > 90 else None,
+                            event = ProcessEvent(
+                                action                = "resource_spike",
+                                outcome               = EventOutcome.UNKNOWN,
+                                severity              = severity,
+                                tags                  = tags,
+                                notes                 = f"CPU={cpu:.1f}% MEM={mem:.1f}MB",
+                                mitre_technique       = "T1496" if cpu > 90 else None,
+                                mitre_tactic          = "Impact" if cpu > 90 else None,
+                                # Direct properties mapping
+                                process_pid           = snap["pid"],
+                                process_name          = snap["name"],
+                                process_executable    = snap["exe"],
+                                process_user          = snap.get("username"),
+                                process_cpu_percent   = cpu,
+                                process_memory_rss_mb = mem,
                             )
-                            self._dispatch(event.to_dict() , self._machine_info)
+                            self._dispatch(event.to_dict(), self._machine_info)
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
             except Exception as ex:

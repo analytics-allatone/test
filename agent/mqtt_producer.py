@@ -6,7 +6,7 @@ import aiomqtt
 SERVER_IP = "80.225.239.163" 
 MQTT_USER = "my_mqtt_user"
 MQTT_PASS = "mqttpassword"
-TOPIC = "agent/events"
+TOPIC = "agent/events_test"
 
 class MQTTProducer:
     def __init__(self, server_ip, mqtt_user, mqtt_pass, mqtt_topic):
@@ -33,7 +33,7 @@ class MQTTProducer:
                 "machine_info" : machine_info,
                 "event": event
             }
-            
+            print(full_payload_dict)
             # 2. Serialize the combined dictionary using the custom handler
             json_string = json.dumps(full_payload_dict, default=self._default_serializer)
             

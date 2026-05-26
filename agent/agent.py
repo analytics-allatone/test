@@ -56,112 +56,99 @@ class SentinelAgent:
     def start(self):
         self._dispatcher = self._build_dispatcher()
         dispatch = self._make_dispatch()
-        col_cfg  = self.config["collectors"]
-
-        # File Collector
-        if col_cfg["file"]["enabled"]:
-            try:
-                
-                fc_cfg = col_cfg["file"]
-                fc = FileCollector(
-                    dispatch    = dispatch,
-                    machine_info= self.machine_info,
-                    watch_paths = fc_cfg.get("watch_paths"),
-                    ignore_dirs = fc_cfg.get("ignore_dirs"),
-                    recursive   = fc_cfg.get("recursive", True),
-                    use_polling = fc_cfg.get("use_polling", False),
-                )
-                fc.start()
-                self._collectors.append(fc)
-                print("✓ File Collector started")
-            except ImportError as e:
-                print(f"File collector unavailable: {e}")
-            except Exception as e:
-                print(f"File collector error: {e}")
-
-        # Auth collector
-        if col_cfg["auth"]["enabled"]:
-            try:
-                
-                ac = create_auth_collector(
-                    dispatch       = dispatch,
-                    machine_info = self.machine_info
-                )
-                ac.start()
-                self._collectors.append(ac)
-                print("Auth Collector started")
-            except Exception as e:
-                print(f"Auth collector error: {e}")
-
-        # Network collector 
-        if col_cfg["network"]["enabled"]:
-            try:
-                
-                nc = NetworkCollector(
-                    dispatch        = dispatch,
-                    machine_info= self.machine_info,
-                    poll_interval   = col_cfg["network"].get("poll_interval", 2.0),
-                    track_bandwidth = col_cfg["network"].get("track_bandwidth", True),
-                )
-                nc.start()
-                self._collectors.append(nc)
-                print(" Network Collector started")
-            except Exception as e:
-                print(f"Network collector error: {e}")
-
-        # Process collector 
-        if col_cfg["process"]["enabled"]:
-            try:
-               
-                pc = ProcessCollector(
-                    dispatch          = dispatch,
-                    machine_info= self.machine_info,
-                    poll_interval     = col_cfg["process"].get("poll_interval", 1.5),
-                    resource_interval = col_cfg["process"].get("resource_interval", 30.0),
-                    hash_executables  = col_cfg["process"].get("hash_executables", True),
-                )
-                pc.start()
-                self._collectors.append(pc)
-                print("Process Collector started")
-            except Exception as e:
-                print(f"Process collector error: {e}")
+        try:
+            
+            fc = FileCollector(
+                dispatch    = dispatch,
+                machine_info= self.machine_info,
+                watch_paths = None,
+                ignore_dirs = None,
+                recursive   = True,
+                use_polling = False,
+            )
+            fc.start()
+            self._collectors.append(fc)
+            print("✓ File Collector started")
+        except ImportError as e:
+            print(f"File collector unavailable: {e}")
+        except Exception as e:
+            print(f"File collector error: {e}")
 
 
-        # USB / Pendrive collector
-        usb_cfg = col_cfg.get("usb", {})
-        if usb_cfg.get("enabled", True):
-            try:
-                uc = USBCollector(
-                    dispatch                 = dispatch,
-                    machine_info= self.machine_info,
-                    poll_interval            = usb_cfg.get("poll_interval", 3.0),
-                    scan_on_connect          = usb_cfg.get("scan_on_connect", True),
-                    transfer_threshold_bytes = usb_cfg.get("transfer_threshold_bytes", 524288000),
-                )
-                uc.start()
-                self._collectors.append(uc)
-                print("USB Collector started")
-            except Exception as e:
-                print(f"USB collector error: {e}")
+        try:
+            
+            ac = create_auth_collector(
+                dispatch       = dispatch,
+                machine_info = self.machine_info
+            )
+            ac.start()
+            self._collectors.append(ac)
+            print("Auth Collector started")
+        except Exception as e:
+            print(f"Auth collector error: {e}")
+
+        try:
+            
+            nc = NetworkCollector(
+                dispatch        = dispatch,
+                machine_info= self.machine_info,
+                poll_interval   = 2.0,
+                track_bandwidth = True
+            )
+            nc.start()
+            self._collectors.append(nc)
+            print(" Network Collector started")
+        except Exception as e:
+            print(f"Network collector error: {e}")
+
+        try:
+            
+            pc = ProcessCollector(
+                dispatch          = dispatch,
+                machine_info= self.machine_info,
+                poll_interval     = 1.5,
+                resource_interval = 30.0,
+                hash_executables  = True
+            )
+            pc.start()
+            self._collectors.append(pc)
+            print("Process Collector started")
+        except Exception as e:
+            print(f"Process collector error: {e}")
+
+
+        try:
+            uc = USBCollector(
+                dispatch                 = dispatch,
+                machine_info= self.machine_info,
+                poll_interval            = 3.0,
+                scan_on_connect          = True,
+                transfer_threshold_bytes = 524288000,
+            )
+            uc.start()
+            self._collectors.append(uc)
+            print("USB Collector started")
+        except Exception as e:
+            print(f"USB collector error: {e}")
 
         # Hard Disk collector
-        hd_cfg = col_cfg.get("harddisk", {})
-        if hd_cfg.get("enabled", True):
-            try:
-                hc = HardDiskCollector(
-                    dispatch         = dispatch,
-                    machine_info= self.machine_info,
-                    poll_interval    = hd_cfg.get("poll_interval", 30.0),
-                    smart_interval   = hd_cfg.get("smart_interval", 300.0),
-                    warn_percent     = hd_cfg.get("warn_percent", 85.0),
-                    critical_percent = hd_cfg.get("critical_percent", 95.0),
-                    enable_smart     = hd_cfg.get("enable_smart", True),
-                )
-                hc.start()
-                self._collectors.append(hc)
-                print("HardDisk Collector started")
-            except Exception as e:
-                print(f"HardDisk collector error: {e}")
+        # hd_cfg = col_cfg.get("harddisk", {})
+        # if hd_cfg.get("enabled", True):
+        #     try:
+        #         hc = HardDiskCollector(
+        #             dispatch         = dispatch,
+        #             machine_info= self.machine_info,
+        #             poll_interval    = hd_cfg.get("poll_interval", 30.0),
+        #             smart_interval   = hd_cfg.get("smart_interval", 300.0),
+        #             warn_percent     = hd_cfg.get("warn_percent", 85.0),
+        #             critical_percent = hd_cfg.get("critical_percent", 95.0),
+        #             enable_smart     = hd_cfg.get("enable_smart", True),
+        #         )
+        #         hc.start()
+        #         self._collectors.append(hc)
+        #         print("HardDisk Collector started")
+        #     except Exception as e:
+        #         print(f"HardDisk collector error: {e}")
         self._running = True
         print(f"Agent running.")
         print("Press Ctrl+C to stop.")

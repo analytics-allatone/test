@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     global worker_task
 
     # # DATABASE STARTUP
-    await create_db_and_tables("master_database")
+    await create_db_and_tables()
 
 
     worker_task = asyncio.create_task(mqtt_background_consumer())
