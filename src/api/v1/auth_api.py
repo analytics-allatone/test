@@ -20,7 +20,7 @@ from schemas.v1.auth_schema import(
 )
 from auth.crypto import hash_password , verify_password
 
-from models.user_model import User
+from models.user_model import Users
 
 from auth.jwt_auth import create_access_token , create_refresh_token , verify_token
 
@@ -40,7 +40,7 @@ async def login(req: LoginRequest ,  db: AsyncSession = Depends(get_async_db)):
     password = req.password
     user = None
 
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(Users).where(Users.email == email))
     user = result.scalars().first()
         
     
@@ -69,7 +69,7 @@ async def login(req: LoginRequest ,  db: AsyncSession = Depends(get_async_db)):
 @auth_router.post("/signup" , response_model = standard_success_response[SignupResponse] , status_code=201)
 async def signup(req: SignupRequest ,  db: AsyncSession = Depends(get_async_db)):
 
-    result = await db.execute(select(User).where(User.email == req.email))
+    result = await db.execute(select(Users).where(Users.email == req.email))
     existing_user = result.scalars().first()
 
     if existing_user:
@@ -78,7 +78,7 @@ async def signup(req: SignupRequest ,  db: AsyncSession = Depends(get_async_db))
 
     hashed_password = hash_password(req.password)
 
-    new_user = User(
+    new_user = Users(
         first_name = req.first_name,
         last_name = req.last_name,
         email = req.email,

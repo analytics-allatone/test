@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from sqlalchemy import insert
 from contextlib import asynccontextmanager
 from db.base import Base
-from models.user_model import User
+from models.user_model import Users
 from models.agent_model import AgentGroups , Agents
 from models.event_model import AuthEvents , ProcessEvents , NetworkEvents , USBEvents , FileEvents
 import json

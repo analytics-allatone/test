@@ -6,8 +6,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 
 
-class User(Base):
-    __tablename__ = "user"
+class Users(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     first_name = Column(String)
