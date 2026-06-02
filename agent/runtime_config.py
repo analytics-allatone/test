@@ -1,0 +1,2 @@
+SERVER_IP = "141.140.220.11"
+AGENT_NAME = "hanuman"
