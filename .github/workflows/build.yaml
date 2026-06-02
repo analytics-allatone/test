@@ -63,10 +63,11 @@ jobs:
           pip install pyinstaller
 
       - name: Build with pyinstaller
+        shell: cmd
         run: |
-          Pyinstaller \
+          pyinstaller \
             --onefile \
-            --follow-imports \
+            --name sentinel \
             agent/main.py
 
       - name: Upload Linux Artifact
