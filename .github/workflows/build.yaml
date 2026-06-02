@@ -27,10 +27,11 @@ jobs:
           pip install pyinstaller
 
       - name: Build with pyinstaller
+        shell: cmd
         run: |
           pyinstaller ^
             --onefile ^
-            --follow-imports ^
+            --name sentinel ^
             agent/main.py
 
       - name: Upload Windows Artifact
@@ -63,7 +64,6 @@ jobs:
           pip install pyinstaller
 
       - name: Build with pyinstaller
-        shell: cmd
         run: |
           pyinstaller \
             --onefile \
