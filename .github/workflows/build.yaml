@@ -32,7 +32,7 @@ jobs:
         run: |
             @'
             SERVER_IP = "1.2.3.4"
-            AGENT_NAME = "agent1"
+            AGENT_NAME = "Jay_hanuman"
             '@ | Set-Content agent/runtime_config.py
       - name: Build with pyinstaller
         shell: cmd
