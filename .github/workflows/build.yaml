@@ -37,7 +37,7 @@ jobs:
       - name: Build with pyinstaller
         shell: cmd
         run: |
-            python -m nuitka --onefile --standalone --output-dir=exec .\agent\main.py
+            # python -m nuitka --onefile --standalone --output-dir=exec .\agent\main.py
             # pyinstaller --onefile --name sentinel agent/main.py
           # python -m nuitka --onefile  --output-filename=sentinel --output-dir=dist agent/main.py
 
@@ -48,7 +48,9 @@ jobs:
           path: dist/*.exe
 
   build-linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container: 
+      image: python:3.11-bullseye
 
     steps:
       - name: Checkout Repository
