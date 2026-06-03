@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: True
   
 
 jobs:
@@ -40,9 +40,7 @@ jobs:
         shell: cmd
         run: |
             pyinstaller --onefile --name sentinel agent/main.py
-            # python -m nuitka --onefile --standalone --output-dir=exec .\agent\main.py
-            # python -m nuitka --onefile  --output-filename=sentinel --output-dir=dist agent/main.py
-
+            
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
