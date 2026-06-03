@@ -6,7 +6,11 @@ import threading
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional, Callable
-
+from watchdog.events import (
+        FileSystemEventHandler, FileCreatedEvent, FileDeletedEvent,
+        FileModifiedEvent, FileMovedEvent, DirCreatedEvent,
+        DirDeletedEvent, DirModifiedEvent, DirMovedEvent
+    )
 try:
     from watchdog.observers import Observer
     from watchdog.observers.polling import PollingObserver
