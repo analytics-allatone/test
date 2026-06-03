@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   pull_request:
   workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  
 
 jobs:
   build-windows:
@@ -39,8 +41,7 @@ jobs:
         run: |
             pyinstaller --onefile --name sentinel agent/main.py
             # python -m nuitka --onefile --standalone --output-dir=exec .\agent\main.py
-            
-          # python -m nuitka --onefile  --output-filename=sentinel --output-dir=dist agent/main.py
+            # python -m nuitka --onefile  --output-filename=sentinel --output-dir=dist agent/main.py
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
@@ -56,16 +57,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      # - name: Setup Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: "3.11"
-
-      # - name: Install Build Tools
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y build-essential
 
       - name: Install Dependencies
         run: |
