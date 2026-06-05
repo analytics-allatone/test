@@ -39,7 +39,7 @@ jobs:
       - name: Build with pyinstaller
         shell: cmd
         run: |
-            python -m nuitka --standalone --onefile --output-filename=sentinel-agent agent/main.py
+            python -m nuitka --standalone --onefile  --assume-yes-for-downloads --output-filename=sentinel-agent agent/main.py
       # pyinstaller --onefile --name sentinel agent/main.py
             
       - name: Upload Windows Artifact
