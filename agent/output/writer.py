@@ -4,23 +4,26 @@ import asyncio
 from queue import Queue, Empty
 from mqtt_producer import MQTTProducer
 
-SERVER_IP = "80.225.239.163" 
-MQTT_USER = "my_mqtt_user"
-MQTT_PASS = "mqttpassword"
-TOPIC = "agent/events_test"
+# SERVER_IP = "80.225.239.163" 
+# MQTT_USER = "my_mqtt_user"
+# MQTT_PASS = "mqttpassword"
+# TOPIC = "agent/events_test"
 
 class EventDispatcher:
-    def __init__(self, stdout: bool = False):
+    def __init__(self, stdout: bool,  server_ip: int, mqtt_user: str = "my_mqtt_user",
+        mqtt_pass: str ="my_mqtt_user",
+        mqtt_topic: str = "agent/events_test",
+        mqtt_port: int = 1883,):
         self._queue = Queue(maxsize=50000)
         self._stdout = stdout
         self._stop = threading.Event()
         self._loop = None  
 
         self._mqtt = MQTTProducer(
-            server_ip=SERVER_IP,
-            mqtt_user=MQTT_USER,
-            mqtt_pass=MQTT_PASS,
-            mqtt_topic=TOPIC
+            server_ip,
+            mqtt_user,
+            mqtt_pass,
+            mqtt_topic
         )
 
         self._thread = threading.Thread(
