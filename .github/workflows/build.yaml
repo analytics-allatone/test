@@ -29,13 +29,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r agent/requirements.txt
           pip install pyinstaller
-      - name: Create runtime_config.py
-        shell: pwsh
-        run: |
-            @'
-            SERVER_IP = "1.2.3.4"
-            AGENT_NAME = "Jay_hanuman"
-            '@ | Set-Content agent/runtime_config.py
+      # - name: Create runtime_config.py
+      #   shell: pwsh
+      #   run: |
+      #       @'
+      #       SERVER_IP = "1.2.3.4"
+      #       AGENT_NAME = "Jay_hanuman"
+      #       '@ | Set-Content agent/runtime_config.py
       - name: Build with pyinstaller
         shell: cmd
         run: |
