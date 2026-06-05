@@ -65,6 +65,7 @@ jobs:
 
       - name: Build with pyinstaller
         run: |
+          sudo apt update && sudo apt install patchelf -y
           python -m nuitka --standalone --onefile  --assume-yes-for-downloads --output-filename=sentinel-agent --output-dir=dist agent/main.py
           # pyinstaller \
           #   --onefile \
