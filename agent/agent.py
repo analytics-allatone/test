@@ -34,7 +34,7 @@ class SentinelAgent:
         cfg = self.config["output"]
 
         return EventDispatcher(
-            stdout=cfg.get("stdout", False),
+            stdout=cfg.get("stdout", False),server_ip= os.getenv("IP"),
         )
 
     def _make_dispatch(self):
