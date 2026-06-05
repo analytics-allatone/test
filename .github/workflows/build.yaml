@@ -67,14 +67,14 @@ jobs:
         run: |
           if command -v apt-get &> /dev/null; then
             echo "Using apt (Debian/Ubuntu)"
-            sudo apt update
-            sudo apt install -y patchelf
+             apt-get update
+             apt-get install -y patchelf
           elif command -v dnf &> /dev/null; then
             echo "Using dnf (Fedora/RHEL)"
-            sudo dnf install -y patchelf
+            dnf install -y patchelf
           elif command -v yum &> /dev/null; then
             echo "Using yum (older RHEL/CentOS)"
-            sudo yum install -y patchelf
+            yum install -y patchelf
           else
             echo "ERROR: No supported package manager found"
             exit 1
