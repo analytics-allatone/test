@@ -12,13 +12,17 @@ from collectors.usb_collector import USBCollector
 from collectors.harddisk_collector import HardDiskCollector
 from utils import get_machine_info
 
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
 
 
 
 
 
 class SentinelAgent:
-    def __init__(self, config: dict , agent_name:str):
+    def __init__(self, config: dict , agent_name:str=os.getenv("name")):
         self.config     = config
         self._collectors = []
         self._dispatcher = None
