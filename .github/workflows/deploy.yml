@@ -48,8 +48,8 @@ jobs:
               --name sentinel \
               --restart always \
               -p 8000:8000 \
-              -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-              -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+              -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}\
+              -e JWT_ALGORITHM=${{ secrets.JWT_ALGORITHM }} \
               -e DB_ENDPOINT=${{ secrets.DB_ENDPOINT }} \
               -e DB_NAME=${{ secrets.DB_NAME }} \
               -e DB_USER=${{ secrets.DB_USER }} \
