@@ -34,9 +34,10 @@ def create_refresh_token(data: dict):
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     token = credentials.credentials  # extracts the token after "Bearer "
-
+    print(token)
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        print(payload)
         user_email: str = payload.get("email")
         if user_email is None:
             raise HTTPException(status_code=401, detail="Invalid token")
