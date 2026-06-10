@@ -3,10 +3,7 @@ import json
 from datetime import datetime
 import aiomqtt
 
-SERVER_IP = "80.225.239.163" 
-MQTT_USER = "my_mqtt_user"
-MQTT_PASS = "mqttpassword"
-TOPIC = "agent/events_test"
+
 
 class MQTTProducer:
     def __init__(self, server_ip, mqtt_user, mqtt_pass, mqtt_topic):

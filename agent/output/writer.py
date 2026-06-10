@@ -4,10 +4,12 @@ import asyncio
 from queue import Queue, Empty
 from mqtt_producer import MQTTProducer
 
-SERVER_IP = "80.225.239.163" 
+ 
 MQTT_USER = "my_mqtt_user"
 MQTT_PASS = "mqttpassword"
-TOPIC = "agent/events_test"
+TOPIC = "agent/agent_events"
+
+from config.unique_info import SERVER_IP
 
 class EventDispatcher:
     def __init__(self, stdout: bool = False):

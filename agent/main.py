@@ -2,13 +2,15 @@ from config.config import DEFAULT_CONFIG
 from agent import SentinelAgent
 import signal
 import sys
+from config.unique_info import AGENT_NAME
+ 
 
 
 def main():
 
     config = DEFAULT_CONFIG.copy()
 
-    agent = SentinelAgent(config , "TestAgent")
+    agent = SentinelAgent(config , AGENT_NAME)
 
     def _sig_handler(sig, frame):
         agent.stop()

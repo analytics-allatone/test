@@ -16,13 +16,11 @@ from schemas.v1.agent_management_schema import (
     AddAgentRequest , AddAgentResponse,
 
     GetAgentsResponse , AgentData, AgentStatusCount,
-    AgentGroupCount , AgentOSCount,
-
-    GetAgentDataResponse
+    AgentGroupCount , AgentOSCount, IsValidAgentNameResponse,
+    ExistingGroup , ExistingGroupsResponse , AgentInstallationCommandResponse
 )
 
 from models.agent_model import Agents , AgentGroups
-# from models.event_model import MachineLogs
 
 from auth.jwt_auth import verify_token
 
@@ -35,8 +33,8 @@ agent_management_router = APIRouter()
 
 
 @agent_management_router.post("/add-agent" , response_model = standard_success_response[AddAgentResponse] , status_code = 201)
-async def getAgents(req: AddAgentRequest , db: AsyncSession = Depends(get_async_db)):
-    # user:dict = Depends(verify_token)
+async def getAgents(req: AddAgentRequest , db: AsyncSession = Depends(get_async_db) , user:dict = Depends(verify_token)):
+
     agent_name = req.agent_name.strip()
     result = await db.execute(select(Agents).where(Agents.agent_name == agent_name))
     existing_user = result.scalars().first()
@@ -61,8 +59,8 @@ async def getAgents(req: AddAgentRequest , db: AsyncSession = Depends(get_async_
 
 
 @agent_management_router.get("/get-agents" , response_model = standard_success_response[GetAgentsResponse] , status_code = 200)
-async def getAgents(db: AsyncSession = Depends(get_async_db)):
-    # user:dict = Depends(verify_token)
+async def getAgents(db: AsyncSession = Depends(get_async_db) , user:dict = Depends(verify_token)):
+    
     
     agents_list = []
     group_dict = {}
@@ -147,62 +145,41 @@ async def getAgents(db: AsyncSession = Depends(get_async_db)):
 
 
 
-# @agent_management_router.get("/get-agent-data" , response_model = standard_success_response[GetAgentDataResponse] , status_code = 200)
-# async def getAgents(agent_name:str ):
-#     #  user:dict = Depends(verify_token)
-#     agent_data = []
-#     agent_name = agent_name.strip()
-#     async with get_async_db(agent_name) as db:
-#         print("sdfghjk")
-#         result = await db.execute(select(MachineLogs).order_by(desc(MachineLogs.id)))
-#         db_logs = result.mappings().all()
-#         print("sdfghjk")
+@agent_management_router.get("/is-valid-agent-name" ,  response_model = standard_success_response[IsValidAgentNameResponse] , status_code = 200)
+async def is_valid_agent_name(agent_name:str = Query() , db: AsyncSession = Depends(get_async_db)):
 
-#         agent_data = [dict(row)["MachineLogs"].__dict__ for row in db_logs]
-#         print("sdfghjk")
-        
-#         # Clean up internal SQLAlchemy state tracking keys if necessary
-#         for d in agent_data:
-#             d.pop('_sa_instance_state', None)
-#         print("sdfghjk")
+    agent_name = agent_name.strip()
+    result = await db.execute(select(Agents).where(Agents.agent_name == agent_name))
+    existing_user = result.scalars().first()
 
-#     res_data = GetAgentDataResponse(agent_data = agent_data)
+    if existing_user:
+        raise HTTPException(status_code=401, detail="Agent already exists with this name")
     
-#     return standard_success_response(data = res_data , message = f"Agent {agent_name} Data Fetched successfully")
+    res_data = IsValidAgentNameResponse(valid = True)
+
+    return standard_success_response(data = res_data , message = "Agents name is Valid")
 
 
 
-# @agent_management_router.get("/get-agent-data", response_model=standard_success_response[GetAgentDataResponse], status_code=200)
-# async def getAgents(
-#     agent_name: str,
-#     page: int = Query(default=1, ge=1, description="Page number, starting from 1"),
-#     db: AsyncSession = Depends(get_async_db)
-# ):
-#     agent_name = agent_name.strip()
-#     limit = 100
-#     offset = (page - 1) * limit
 
-#     query = (
-#         select(MachineLogs)
-#         .order_by(desc(MachineLogs.id))
-#         .limit(limit)
-#         .offset(offset)
-#     )
-#     result = await db.execute(query)
-#     db_logs = result.mappings().all()
+@agent_management_router.get("/existing-groups" ,  response_model = standard_success_response[ExistingGroupsResponse] , status_code = 200)
+async def existing_group(db: AsyncSession = Depends(get_async_db)):
 
-#     # 3. Transform data efficiently
-#     agent_data = []
-#     for row in db_logs:
-#         log_obj = row["MachineLogs"]
-#         # Convert to dict and safely remove SQLAlchemy internal state
-#         log_dict = {k: v for k, v in log_obj.__dict__.items() if k != '_sa_instance_state'}
-#         agent_data.append(log_dict)
+    group_result = await db.execute(select(AgentGroups))
+    existing_groups = group_result.scalars().all()
 
-#     # 4. Construct response
-#     res_data = GetAgentDataResponse(agent_data=agent_data)
-    
-#     return standard_success_response(
-#         data=res_data, 
-#         message=f"Agent {agent_name} Data Fetched successfully (Page {page})"
-#     )
+    group_list = [ExistingGroup(group_id = g.id , group_name= g.group_name) for g in existing_groups]
+
+    res_data = ExistingGroupsResponse(groups = group_list)
+
+    return standard_success_response(data = res_data , message = "Existing groups get Successfully")
+
+
+
+@agent_management_router.get("/agent-installation-command" ,  response_model = standard_success_response[AgentInstallationCommandResponse] , status_code = 200)
+async def agent_installation_command(os : str, 
+                                     agent_name: str,
+                                     server_ip : str,
+                                     db: AsyncSession = Depends(get_async_db)):
+    res_data = AgentInstallationCommandResponse(installation_command = "hajfdh  asalj aohaf a" , running_command = "hkljkfakln ajf")
+    return standard_success_response(data = res_data , message = "Instalation command get Successfully")

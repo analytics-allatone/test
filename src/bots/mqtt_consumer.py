@@ -13,7 +13,7 @@ load_dotenv()
 SERVER_IP = "80.225.239.163" 
 MQTT_USER = "my_mqtt_user"
 MQTT_PASS = "mqttpassword"
-TOPIC = "agent/events_test"
+TOPIC = "agent/agent_events"
 
 
 VALID_CATEGORIES = ["authentication" , "file" , "network" , "process" , "usb"]

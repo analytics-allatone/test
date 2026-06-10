@@ -59,11 +59,22 @@ class GetAgentsResponse(BaseModel):
 
 
 
+class IsValidAgentNameResponse(BaseModel):
+    valid : bool
 
 
 
+class ExistingGroup(BaseModel):
+    group_id:int
+    group_name : str
 
 
-class GetAgentDataResponse(BaseModel):
-    agent_data:list
+class ExistingGroupsResponse(BaseModel):
+    groups : list[ExistingGroup]
+
+
+class AgentInstallationCommandResponse(BaseModel):
+    installation_command : str
+    running_command : str
+
     
