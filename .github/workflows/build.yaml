@@ -28,7 +28,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r agent/requirements.txt
-          pip install nuitka
+          pip install pyinstaller
+      # pip install nuitka
       # - name: Create runtime_config.py
       #   shell: pwsh
       #   run: |
@@ -39,7 +40,8 @@ jobs:
       - name: Build with pyinstaller
         shell: cmd
         run: |
-            python -m nuitka --standalone --onefile  --assume-yes-for-downloads --output-filename=sentinel-agent --output-dir=dist agent/main.py
+            pyinstaller --onefile --name sentinel-agent agent/main.py
+      # python -m nuitka --standalone --onefile  --assume-yes-for-downloads --output-filename=sentinel-agent --output-dir=dist agent/main.py
       # pyinstaller --onefile --name sentinel agent/main.py
             
       - name: Upload Windows Artifact
@@ -61,40 +63,41 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r agent/requirements.txt
-          pip install nuitka
+          pip install pyinstaller
+          # pip install nuitka
       
-      - name: Install patchelf (detect package manager)
-        run: |
-          if command -v apt-get &> /dev/null; then
-            echo "Using apt (Debian/Ubuntu)"
-             apt-get update
-             apt-get install -y patchelf
-          elif command -v dnf &> /dev/null; then
-            echo "Using dnf (Fedora/RHEL)"
-            dnf install -y patchelf
-          elif command -v yum &> /dev/null; then
-            echo "Using yum (older RHEL/CentOS)"
-            yum install -y patchelf
-          else
-            echo "ERROR: No supported package manager found"
-            exit 1
-          fi
+      # - name: Install patchelf (detect package manager)
+      #   run: |
+      #     if command -v apt-get &> /dev/null; then
+      #       echo "Using apt (Debian/Ubuntu)"
+      #        apt-get update
+      #        apt-get install -y patchelf
+      #     elif command -v dnf &> /dev/null; then
+      #       echo "Using dnf (Fedora/RHEL)"
+      #       dnf install -y patchelf
+      #     elif command -v yum &> /dev/null; then
+      #       echo "Using yum (older RHEL/CentOS)"
+      #       yum install -y patchelf
+      #     else
+      #       echo "ERROR: No supported package manager found"
+      #       exit 1
+      #     fi
 
       - name: Build with pyinstaller
         run: |
-          python -m nuitka --standalone --onefile  --assume-yes-for-downloads --output-filename=sentinel-agent --output-dir=dist agent/main.py
-          # pyinstaller \
-          #   --onefile \
-          #   --name sentinel \
-          #   agent/main.py
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          files: dist/sentinel-agent.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # python -m nuitka --standalone --onefile  --assume-yes-for-downloads --output-filename=sentinel-agent --output-dir=dist agent/main.py
+          pyinstaller \
+            --onefile \
+            --name sentinel-agent \
+            agent/main.py
+      # - name: Create GitHub Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     tag_name: ${{ github.ref_name }}
+      #     release_name: Release ${{ github.ref_name }}
+      #     files: dist/sentinel-agent.exe
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
