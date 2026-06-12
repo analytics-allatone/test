@@ -14,7 +14,7 @@ from utils import get_machine_info
 
 from dotenv import load_dotenv
 import os
-load_dotenv("./.env")
+load_dotenv()
 
 
 
