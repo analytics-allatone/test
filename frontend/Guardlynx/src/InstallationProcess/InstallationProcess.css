@@ -1,0 +1,517 @@
+/* Installation Process Styles */
+.installation-container {
+  min-height: 100vh;
+  background: #fafbfc;
+  padding: 30px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.installation-wrapper {
+  max-width: 850px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* Header */
+.installation-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 32px 40px;
+  text-align: left;
+}
+
+.installation-header h1 {
+  margin: 0;
+  font-size: 1.8em;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #111827;
+}
+
+.installation-header p {
+  margin: 8px 0 0;
+  font-size: 0.95em;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+/* Form Section */
+.installation-form {
+  padding: 32px 40px;
+}
+
+.form-section {
+  margin-bottom: 28px;
+}
+
+.form-section:last-of-type:not(.action-buttons) {
+  margin-bottom: 28px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.label-title {
+  display: block;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.label-hint {
+  display: block;
+  font-size: 0.8em;
+  color: #9ca3af;
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+/* OS Grid */
+.os-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.os-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  font-family: inherit;
+}
+
+.os-button:hover {
+  border-color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.os-button.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.os-icon {
+  font-size: 2em;
+  margin-bottom: 6px;
+}
+
+.os-name {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Architecture Grid */
+.architecture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.arch-button {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  color: #374151;
+  transition: border-color 0.2s, background-color 0.2s;
+  font-family: "Courier New", monospace;
+}
+
+.arch-button:hover {
+  border-color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.arch-button.active {
+  border-color: #3b82f6;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* Input Wrapper */
+.input-wrapper {
+  position: relative;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95em;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  background: white;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.form-input.error {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.form-input.error:focus {
+  border-color: #dc2626;
+}
+
+.form-input.success {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.form-input.success:focus {
+  border-color: #10b981;
+}
+
+.input-status {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.checking {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #d97706;
+}
+
+.spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #e5e7eb;
+  border-top-color: #d97706;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 38px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.form-select:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.available {
+  color: #059669;
+}
+
+.unavailable {
+  color: #dc2626;
+}
+
+.error-message {
+  margin-top: 6px;
+  font-size: 0.8em;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.error-message::before {
+  content: "⚠";
+}
+
+/* Command Section */
+.command-section {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.command-box {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 14px;
+  gap: 10px;
+  overflow: auto;
+  position: relative;
+}
+
+.command-text {
+  flex: 1;
+  font-family: "Courier New", monospace;
+  font-size: 0.85em;
+  color: #374151;
+  background: transparent;
+  border: none;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.copy-button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.copy-button:hover {
+  background: #2563eb;
+}
+
+.copy-button.copied {
+  background: #10b981;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-primary:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: white;
+  color: #3b82f6;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Info Section */
+.info-section {
+  padding: 24px 40px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.info-card {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border-left: 3px solid #3b82f6;
+  border-radius: 6px;
+}
+
+.info-icon {
+  font-size: 1.5em;
+  flex-shrink: 0;
+}
+
+.info-card h3 {
+  margin: 0 0 8px 0;
+  color: #111827;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+.info-card ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style: none;
+}
+
+.info-card li {
+  color: #6b7280;
+  margin-bottom: 6px;
+  font-size: 0.9em;
+  line-height: 1.4;
+  position: relative;
+  padding-left: 18px;
+}
+
+.info-card li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #10b981;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .installation-container {
+    padding: 16px 12px;
+  }
+
+  .installation-wrapper {
+    border-radius: 8px;
+  }
+
+  .installation-header {
+    padding: 20px 24px;
+  }
+
+  .installation-header h1 {
+    font-size: 1.4em;
+  }
+
+  .installation-form {
+    padding: 20px 24px;
+  }
+
+  .os-grid {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 8px;
+  }
+
+  .architecture-grid {
+    grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+  }
+
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .command-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .copy-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .info-section {
+    padding: 16px 24px;
+  }
+
+  .info-card {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .installation-container {
+    padding: 12px 8px;
+  }
+
+  .installation-header {
+    padding: 16px 16px;
+  }
+
+  .installation-header h1 {
+    font-size: 1.2em;
+  }
+
+  .installation-header p {
+    font-size: 0.9em;
+  }
+
+  .installation-form {
+    padding: 16px;
+  }
+
+  .form-section {
+    margin-bottom: 20px;
+  }
+
+  .os-button {
+    padding: 16px 12px;
+  }
+
+  .os-icon {
+    font-size: 1.8em;
+    margin-bottom: 4px;
+  }
+
+  .os-name {
+    font-size: 0.85em;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    font-size: 0.9em;
+  }
+
+  .command-text {
+    font-size: 0.8em;
+  }
+
+  .copy-button {
+    padding: 6px 10px;
+    font-size: 0.8em;
+  }
+}
