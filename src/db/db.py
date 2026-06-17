@@ -18,7 +18,8 @@ load_dotenv()
 dbuser = os.environ.get("DB_USER")
 dbpassword = os.environ.get("DB_PASSWORD")
 dbendpoint = os.environ.get("DB_ENDPOINT")
-dbname = os.environ.get("DB_NAME")
+# dbname = os.environ.get("DB_NAME")
+dbname = "testdb"
 
 
 DATABASE_URL_ASYNC=f"postgresql+asyncpg://{dbuser}:{dbpassword}@{dbendpoint}:5432/{dbname}"

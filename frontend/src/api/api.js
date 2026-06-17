@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const pro = "http://80.225.239.163:8000/v1";
-// const dev = "http://localhost:8000/v1";
+// const pro = "http://80.225.239.163:8000/api/v1";
+const pro = "http://localhost:8000/api/v1";
+// const dev = "http://localhost:8000/api/v1";
 
 let run = pro;
 
