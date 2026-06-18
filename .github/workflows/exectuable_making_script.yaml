@@ -101,3 +101,6 @@ jobs:
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
+        with:
+          name: linux-executable
+          path: dist/*
