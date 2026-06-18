@@ -15,3 +15,4 @@ load_dotenv(os.path.join(app_dir(), ".env"))
  
 AGENT_NAME = os.getenv("AGENT_NAME")
 SERVER_IP = os.getenv("SERVER_IP")
+MACHINE_ID=os.getenv("SERVER_IP")
