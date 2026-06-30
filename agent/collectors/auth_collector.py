@@ -6,6 +6,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
+
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -42,7 +43,7 @@ PATTERNS = {
 #    r"sshd\[(\d+)\]: Disconnected from (?:(?:authenticating|invalid) user )?(\S+) ([\d.a-fA-F:]+) port (\d+)"
 #    ),
     "sudo": re.compile(
-      r"sudo:\s+(\S+)\s*:\s*TTY=(\S+)\s*;\s*PWD=(\S+)\s*;\s*USER=(\S+)\s*;\s*COMMAND=(.*)"
+        r"sudo:\s+(\S+)\s*:\s*TTY=(\S+)\s*;\s*PWD=(\S+)\s*;\s*USER=(\S+)\s*;\s*COMMAND=(.*)"
     ),
     "sudo_fail": re.compile(
         r"sudo:\s+(\S+)\s*:\s*(\d+) incorrect password attempt"
@@ -85,7 +86,7 @@ def _parse_timestamp(ts_str: str) -> str:
         t     = parts[2]
         year  = datetime.now().year
         h, m, s = map(int, t.split(":"))
-   dt = datetime(year, month, day, h, m, s, tzinfo=timezone.utc)
+        dt = datetime(year, month, day, h, m, s, tzinfo=timezone.utc)
         return dt.isoformat()
     except Exception:
         return datetime.now(timezone.utc).isoformat()
@@ -128,7 +129,8 @@ def parse_auth_line(line: str, dispatch: Callable, machine_info):
             process_pid  = int(m.group(1)),
             process_name = "sshd"
         )
- # ── SSH FAIL ────────────────────────────────
+    
+    # ── SSH FAIL ────────────────────────────────
     m = PATTERNS["ssh_fail"].search(msg)
     if m and not event:
         event = AuthEvent(
@@ -169,7 +171,9 @@ def parse_auth_line(line: str, dispatch: Callable, machine_info):
             mitre_technique = "T1110"
         )
     # ── SSH DISCONNECT (pre-auth) ───────────────
-    m = PATTERNS["ssh_dievent = AuthEvent(
+    m = PATTERNS["ssh_disconnect"].search(msg)
+    if m and not event:
+        event = AuthEvent(
             timestamp = timestamp,
             action    = EventAction.SSH_FAIL,
             outcome   = EventOutcome.FAILURE,
@@ -186,17 +190,17 @@ def parse_auth_line(line: str, dispatch: Callable, machine_info):
     m = PATTERNS["ssh_recv_disconnect"].search(msg)
     if m and not event:
          event = AuthEvent(
-             timestamp = timestamp,
-             action    = EventAction.SSH_FAIL,
-             outcome   = EventOutcome.FAILURE,
-             severity  = Severity.LOW,
-             tags      = ["ssh", "disconnect", "brute_force_candidate"],
-             auth_source_ip   = m.group(2),
-             auth_source_port = int(m.group(3)),
-             auth_session_type = "ssh",
-             process_pid  = int(m.group(1)),
-             process_name = "sshd",
-             )
+	     timestamp = timestamp,
+	     action    = EventAction.SSH_FAIL,
+	     outcome   = EventOutcome.FAILURE,
+	     severity  = Severity.LOW,
+	     tags      = ["ssh", "disconnect", "brute_force_candidate"],
+	     auth_source_ip   = m.group(2),
+	     auth_source_port = int(m.group(3)),
+	     auth_session_type = "ssh",
+	     process_pid  = int(m.group(1)),
+	     process_name = "sshd",
+	     )
     # ── SUDO EXECUTION ──────────────────────────
     m = PATTERNS["sudo"].search(msg)
     if m and not event:
@@ -214,7 +218,8 @@ def parse_auth_line(line: str, dispatch: Callable, machine_info):
             mitre_tactic    = "Privilege Escalation",
             mitre_technique = "T1548.003"
         )
- # ── PAM FAILURE ─────────────────────────────
+
+    # ── PAM FAILURE ─────────────────────────────
     m = PATTERNS["pam_fail"].search(msg)
     if m and not event:
         event = AuthEvent(
@@ -258,7 +263,7 @@ def parse_auth_line(line: str, dispatch: Callable, machine_info):
             severity  = Severity.HIGH,
             collector = "auth_log",
             tags      = ["user_management"],
-     user_name    = m.group(2),
+            user_name    = m.group(2),
             process_pid  = int(m.group(1)),
             process_name = "userdel"
         )
@@ -282,28 +287,28 @@ def parse_auth_line(line: str, dispatch: Callable, machine_info):
     if m and not event:
         event = AuthEvent(
             timestamp = timestamp,
-                action    = EventAction.SSH_FAIL,
-                outcome   = EventOutcome.FAILURE,
-                severity  = Severity.LOW,
-                collector = "auth_log",
-                tags      = ["ssh", "disconnect", "preauth", "brute_force_candidate"],
-                user_name = m.group(2),
-                auth_source_ip   = m.group(3),
-                auth_source_port = int(m.group(4)),
-                auth_session_type   = "ssh",
-                auth_failure_reason = "pre-auth disconnect",
-                process_pid  = int(m.group(1)),
-                process_name = "sshd",
-                mitre_tactic    = "Credential Access",
-                mitre_technique = "T1110"
-            )
+	        action    = EventAction.SSH_FAIL,
+	        outcome   = EventOutcome.FAILURE,
+	        severity  = Severity.LOW,
+	        collector = "auth_log",
+	        tags      = ["ssh", "disconnect", "preauth", "brute_force_candidate"],
+	        user_name = m.group(2),
+	        auth_source_ip   = m.group(3),
+	        auth_source_port = int(m.group(4)),
+	        auth_session_type   = "ssh",
+	        auth_failure_reason = "pre-auth disconnect",
+	        process_pid  = int(m.group(1)),
+	        process_name = "sshd",
+	        mitre_tactic    = "Credential Access",
+	        mitre_technique = "T1110"
+	    )
     if event:
         try:
         #print(f"[MATCHED] {line}")   # only prints when something matched
             dispatch(event.to_dict(), machine_info)
-         except Exception as e:
+        except Exception as e:
             print(f"[AUTH] dispatch/build error: {e}")
-
+   
 # ─────────────────────────────────────────────
 #  COLLECTORS LAYER
 # ─────────────────────────────────────────────
@@ -345,7 +350,6 @@ class LinuxAuthCollector:
                     else:
                         time.sleep(0.05)
                         try:
-              try:
                             if Path(self._log_path).stat().st_ino != os.fstat(f.fileno()).st_ino:
                                 print("Auth log rotated, reopening...")
                                 break
@@ -359,7 +363,7 @@ class LinuxAuthCollector:
             try:
                 parse_auth_line(line, self._dispatch, self._machine_info)
             except Exception as e:
-                print(f"[AUTH] parse error: {e}")
+                print(f"[AUTH] parse error: {e}") 
     def start(self):
         self._thread = threading.Thread(target=self._tail, daemon=True, name="auth-tail")
         self._thread.start()
@@ -431,6 +435,7 @@ class WindowsAuthCollector:
             logon_type = int(strings[8]) if len(strings) > 8 and strings[8].isdigit() else None
 
             ts = ev.TimeGenerated.isoformat()
+
             event = AuthEvent(
                 timestamp = ts,
                 action    = action,
@@ -443,7 +448,7 @@ class WindowsAuthCollector:
                 auth_session_type= self.LOGON_TYPES.get(logon_type, str(logon_type)) if logon_type else None,
                 auth_method      = "password"
             )
-
+            
             if eid == 4625:
                 event.mitre_tactic    = "Credential Access"
                 event.mitre_technique = "T1110"
@@ -464,5 +469,3 @@ def create_auth_collector(dispatch: Callable, machine_info):
     if platform.system() == "Windows":
         return WindowsAuthCollector(dispatch, machine_info)
     return LinuxAuthCollector(dispatch, machine_info)
-
-hine_info)
