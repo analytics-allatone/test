@@ -86,84 +86,146 @@ class NetworkCollector:
 
     @staticmethod
     def _conn_key(c) -> Tuple:
-        laddr = (c.laddr.ip, c.laddr.port) if c.laddr else ("", 0)
-        raddr = (c.raddr.ip, c.raddr.port) if c.raddr else ("", 0)
-        return (c.family, c.type, laddr, raddr, c.pid)
+        """
+        Create unique key for connection, handling both TCP/IP and Unix sockets.
+        
+        TCP/IP socket:  c.laddr = paddr(ip='192.168.1.100', port=5432)
+        Unix socket:    c.laddr = '/var/run/socket.sock' (string!)
+        """
+        try:
+            # ✓ FIX: Check if laddr is a string (Unix domain socket)
+            if isinstance(c.laddr, str):
+                # Unix domain socket - laddr is a file path
+                laddr = ("unix", c.laddr)
+                raddr = ("unix", c.raddr if isinstance(c.raddr, str) else "")
+            else:
+                # TCP/IP socket - laddr is paddr with .ip and .port
+                laddr = (c.laddr.ip, c.laddr.port) if c.laddr else ("", 0)
+                raddr = (c.raddr.ip, c.raddr.port) if c.raddr else ("", 0)
+            
+            return (c.family, c.type, laddr, raddr, c.pid)
+        except Exception as e:
+            # Fallback if anything goes wrong
+            return (c.family, c.type, ("error", 0), ("error", 0), c.pid)
+ 
+        # laddr = (c.laddr.ip, c.laddr.port) if c.laddr else ("", 0)
+        # raddr = (c.raddr.ip, c.raddr.port) if c.raddr else ("", 0)
+        # return (c.family, c.type, laddr, raddr, c.pid)
 
     def _snapshot_conn(self, c) -> dict:
-        laddr = (c.laddr.ip, c.laddr.port) if c.laddr else ("", 0)
-        raddr = (c.raddr.ip, c.raddr.port) if c.raddr else ("", 0)
-        return {
-            "family":  c.family,
-            "type":    c.type,
-            "laddr":   laddr,
-            "raddr":   raddr,
-            "status":  c.status,
-            "pid":     c.pid,
-        }
+        try:
+            # ✓ FIX: Check if laddr is a string (Unix domain socket)
+            if isinstance(c.laddr, str):
+                # Unix domain socket
+                laddr = ("unix", c.laddr)
+                raddr = ("unix", c.raddr if isinstance(c.raddr, str) else "")
+            else:
+                # TCP/IP socket
+                laddr = (c.laddr.ip, c.laddr.port) if c.laddr else ("", 0)
+                raddr = (c.raddr.ip, c.raddr.port) if c.raddr else ("", 0)
+            
+            return {
+                "family":  c.family,
+                "type":    c.type,
+                "laddr":   laddr,
+                "raddr":   raddr,
+                "status":  c.status,
+                "pid":     c.pid,
+            }
+        except Exception as e:
+            print(f"Error snapshotting connection: {e}")
+            return {
+                "family":  c.family,
+                "type":    c.type,
+                "laddr":   ("error", 0),
+                "raddr":   ("error", 0),
+                "status":  "error",
+                "pid":     c.pid,
+            }
 
     def _emit_connection(self, snap: dict, action: str):
-        laddr  = snap["laddr"]
-        raddr  = snap["raddr"]
-        dst_ip = raddr[0]
-        dst_port = raddr[1]
 
-        transport = "tcp" if snap["type"] == socket.SOCK_STREAM else "udp"
-        protocol  = protocol_for_port(dst_port)
-        direction = "outbound" if laddr[1] > 1024 else "inbound"
-        severity  = severity_for_connection(dst_ip, dst_port)
-
-        if dst_port == 0 and laddr[1] < 1024:
-            direction = "inbound"
-
-        tags = ["network"]
-        if dst_port in SUSPICIOUS_PORTS:
-            tags.append("suspicious_port")
-        if dst_ip and not is_private_ip(dst_ip):
-            tags.append("external")
-
-        mitre_tech = None
-        mitre_tact = None
-        if dst_port in {4444, 31337, 1337}:
-            mitre_tech = "T1571"  # Non-Standard Port
-            mitre_tact = "Command and Control"
-
-        # Instantiate flat schema instance directly
-        event = NetworkEvent(
-            action                    = action,
-            outcome                   = EventOutcome.SUCCESS,
-            severity                  = severity,
-            tags                      = tags,
-            mitre_tactic              = mitre_tact,
-            mitre_technique           = mitre_tech,
-            # Flattened Network properties
-            network_direction         = direction,
-            network_transport         = transport,
-            network_protocol          = protocol,
-            network_src_ip            = laddr[0],
-            network_src_port          = laddr[1],
-            network_dst_ip            = dst_ip,
-            network_dst_port          = dst_port,
-            network_connection_status = snap.get("status"),
-            network_is_private_ip     = is_private_ip(dst_ip) if dst_ip else None,
-        )
-
-        # Enrich with Flattened Process Context natively if PID exists
-        pid = snap.get("pid")
-        if pid:
-            event.process_pid = pid
-            try:
-                p = psutil.Process(pid)
-                with p.oneshot():
-                    event.process_ppid         = p.ppid()
-                    event.process_name         = p.name()
-                    event.process_executable   = p.exe()
-                    event.process_command_line = " ".join(p.cmdline())
-                    event.process_user         = p.username()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-        self._dispatch(event.to_dict(), self._machine_info)
-
+        """
+        Emit connection event with full flattening.
+        Safe to call with both TCP and Unix socket snapshots.
+        """
+        try:
+            laddr  = snap["laddr"]
+            raddr  = snap["raddr"]
+            
+            # ✓ FIX: Check if addresses are valid before using them
+            if laddr[0] == "unix" or raddr[0] == "unix":
+                # Unix domain socket - don't emit as network event
+                # (Unix sockets are local IPC, not network connections)
+                return
+            
+            dst_ip   = raddr[0]
+            dst_port = raddr[1]
+            
+            # ✓ FIX: Ensure dst_port is an integer before comparison
+            if not isinstance(dst_port, int):
+                return
+            
+            transport = "tcp" if snap["type"] == socket.SOCK_STREAM else "udp"
+            protocol  = protocol_for_port(dst_port)
+            
+            # ✓ FIX: Check port type before comparison
+            direction = "outbound" if isinstance(laddr[1], int) and laddr[1] > 1024 else "inbound"
+            severity  = severity_for_connection(dst_ip, dst_port)
+ 
+            if dst_port == 0 and isinstance(laddr[1], int) and laddr[1] < 1024:
+                direction = "inbound"
+ 
+            tags = ["network"]
+            if dst_port in SUSPICIOUS_PORTS:
+                tags.append("suspicious_port")
+            if dst_ip and not is_private_ip(dst_ip):
+                tags.append("external")
+ 
+            mitre_tech = None
+            mitre_tact = None
+            if dst_port in {4444, 31337, 1337}:
+                mitre_tech = "T1571"  # Non-Standard Port
+                mitre_tact = "Command and Control"
+ 
+            # Instantiate flat schema instance directly
+            event = NetworkEvent(
+                action                    = action,
+                outcome                   = EventOutcome.SUCCESS,
+                severity                  = severity,
+                tags                      = tags,
+                mitre_tactic              = mitre_tact,
+                mitre_technique           = mitre_tech,
+                # Flattened Network properties
+                network_direction         = direction,
+                network_transport         = transport,
+                network_protocol          = protocol,
+                network_src_ip            = laddr[0] if laddr[0] != "error" else None,
+                network_src_port          = laddr[1] if isinstance(laddr[1], int) else None,
+                network_dst_ip            = dst_ip,
+                network_dst_port          = dst_port,
+                network_connection_status = snap.get("status"),
+                network_is_private_ip     = is_private_ip(dst_ip) if dst_ip else None,
+            )
+ 
+            # Enrich with Flattened Process Context natively if PID exists
+            pid = snap.get("pid")
+            if pid:
+                event.process_pid = pid
+                try:
+                    p = psutil.Process(pid)
+                    with p.oneshot():
+                        event.process_ppid         = p.ppid()
+                        event.process_name         = p.name()
+                        event.process_executable   = p.exe()
+                        event.process_command_line = " ".join(p.cmdline())
+                        event.process_user         = p.username()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            
+            self._dispatch(event.to_dict(), self._machine_info)
+        except Exception as e:
+            print(f"Error emitting connection event: {e}")
     def _poll(self):
         while not self._stop.is_set():
             try:
