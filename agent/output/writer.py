@@ -6,8 +6,8 @@ from mqtt_producer import MQTTProducer
 
  
 MQTT_USER = "my_mqtt_user"
-MQTT_PASS = "mqttpassword"
-TOPIC = "agent/agent_events"
+MQTT_PASS = "my_mqtt_user"
+TOPIC = "agent/events_test"
 
 from config.unique_info import SERVER_IP
 
