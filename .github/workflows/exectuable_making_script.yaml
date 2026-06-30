@@ -40,7 +40,7 @@ jobs:
       - name: Build with pyinstaller
         shell: cmd
         run: |
-            pyinstaller --onefile --name sentinel-agent agent/main.py
+            pyinstaller --onefile --name sentinel-agent agent/main.py --hidden-import collectors.auth_collector --hidden-import collectors.network_collector --hidden-import collectors.file_collector --hidden-import collectors.db_discovery_collector
       # python -m nuitka --standalone --onefile  --assume-yes-for-downloads --output-filename=sentinel-agent --output-dir=dist agent/main.py
       # pyinstaller --onefile --name sentinel agent/main.py
             
